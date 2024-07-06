@@ -5,7 +5,7 @@ from resselt.archs.utils import DySample
 
 
 class GatedCNNBlock(nn.Module):
-    r""" Our implementation of Gated CNN Block: https://arxiv.org/pdf/1612.08083
+    r"""Our implementation of Gated CNN Block: https://arxiv.org/pdf/1612.08083
     Args:
         conv_ratio: control the number of channels to conduct depthwise convolution.
             Conduct convolution on partial channels can improve paraitcal efficiency.
@@ -13,10 +13,7 @@ class GatedCNNBlock(nn.Module):
             also used by InceptionNeXt (https://arxiv.org/abs/2303.16900) and FasterNet (https://arxiv.org/abs/2303.03667)
     """
 
-    def __init__(self, dim,
-                 expansion_ratio=8 / 3,
-                 kernel_size=7,
-                 conv_ratio=1.0):
+    def __init__(self, dim, expansion_ratio=8 / 3, kernel_size=7, conv_ratio=1.0):
         super().__init__()
         self.norm = nn.LayerNorm(dim, eps=1e-6)
         hidden = int(expansion_ratio * dim)
@@ -24,8 +21,7 @@ class GatedCNNBlock(nn.Module):
         self.act = nn.Mish()
         conv_channels = int(conv_ratio * dim)
         self.split_indices = [hidden, hidden - conv_channels, conv_channels]
-        self.conv = nn.Conv2d(conv_channels, conv_channels, kernel_size=kernel_size, padding=kernel_size // 2,
-                              groups=conv_channels)
+        self.conv = nn.Conv2d(conv_channels, conv_channels, kernel_size=kernel_size, padding=kernel_size // 2, groups=conv_channels)
         self.fc2 = nn.Linear(hidden, dim)
 
     def forward(self, x):
@@ -40,19 +36,10 @@ class GatedCNNBlock(nn.Module):
 
 
 class GatedBlocks(nn.Module):
-    def __init__(self,
-                 in_dim,
-                 out_dim,
-                 n_blocks,
-                 expansion_ratio
-                 ):
+    def __init__(self, in_dim, out_dim, n_blocks, expansion_ratio):
         super().__init__()
         self.in_to_out = nn.Conv2d(in_dim, out_dim, kernel_size=3, padding=1)
-        self.gcnn = nn.Sequential(
-            *[GatedCNNBlock(out_dim,
-                            expansion_ratio=expansion_ratio)
-              for _ in range(n_blocks)
-              ])
+        self.gcnn = nn.Sequential(*[GatedCNNBlock(out_dim, expansion_ratio=expansion_ratio) for _ in range(n_blocks)])
 
     def forward(self, x):
         x = self.in_to_out(x)
@@ -63,46 +50,38 @@ class GatedBlocks(nn.Module):
 
 
 class MoSR(nn.Module):
-    def __init__(self,
-                 in_ch: int = 3,
-                 out_ch: int = 3,
-                 upscale: int = 4,
-                 blocks: tuple[int] = (6, 9, 9),
-                 dims: tuple[int] = (64, 96, 96),
-                 upsampler: str = "ps",
-                 expansion_ratio: float = 1.0
-                 ):
+    def __init__(
+        self,
+        in_ch: int = 3,
+        out_ch: int = 3,
+        upscale: int = 4,
+        blocks: tuple[int] = (6, 9, 9),
+        dims: tuple[int] = (64, 96, 96),
+        upsampler: str = 'ps',
+        expansion_ratio: float = 1.0,
+    ):
         super(MoSR, self).__init__()
         len_blocks = len(blocks)
         dims = [in_ch] + list(dims)
         self.gblocks = nn.Sequential(
-            *[GatedBlocks(dims[i], dims[i + 1], blocks[i],
-                          expansion_ratio=expansion_ratio
-                          )
-              for i in range(len_blocks)]
+            *[GatedBlocks(dims[i], dims[i + 1], blocks[i], expansion_ratio=expansion_ratio) for i in range(len_blocks)]
         )
 
-        if upsampler == "ps":
-            self.upsampler = nn.Sequential(
-                nn.Conv2d(dims[-1],
-                          out_ch * (upscale ** 2),
-                          3, padding=1),
-                nn.PixelShuffle(upscale)
-            )
-        elif upsampler == "dys":
+        if upsampler == 'ps':
+            self.upsampler = nn.Sequential(nn.Conv2d(dims[-1], out_ch * (upscale**2), 3, padding=1), nn.PixelShuffle(upscale))
+        elif upsampler == 'dys':
             self.upsampler = DySample(dims[-1], out_ch, upscale)
-        elif upsampler == "conv":
+        elif upsampler == 'conv':
             if upscale != 1:
-                msg = "conv supports only 1x"
+                msg = 'conv supports only 1x'
                 raise ValueError(msg)
 
-            self.upsampler = nn.Conv2d(dims[-1],
-                                       out_ch,
-                                       3, padding=1)
+            self.upsampler = nn.Conv2d(dims[-1], out_ch, 3, padding=1)
         else:
             raise NotImplementedError(
                 f'upsampler: {upsampler} not supported, choose one of these options: \
-                ["ps", "dys", "conv"] conv supports only 1x')
+                ["ps", "dys", "conv"] conv supports only 1x'
+            )
 
     def forward(self, x):
         x = self.gblocks(x)
