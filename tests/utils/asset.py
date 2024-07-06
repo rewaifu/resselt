@@ -1,3 +1,4 @@
+from abc import ABC
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
@@ -7,7 +8,7 @@ import requests
 import torch
 from pepeline import read
 
-from resselt.registry import WrappedModel, Architecture
+from resselt.registry.architecture import WrappedModel, Architecture
 from resselt.utils import canonicalize_state_dict
 
 ROOT_DIR = Path('tests/assets')
@@ -21,7 +22,7 @@ class AssetType(Enum):
 
 
 @dataclass
-class Asset:
+class Asset(ABC):
     type: AssetType
     filename: str
     url: str
@@ -69,8 +70,8 @@ class ImageAsset(Asset):
 
 
 class ImageAssets(Enum):
-    GRAY_1200_1669 = ImageAsset('manga_1200_1669.jpg', 'https://public.yor.ovh/FP02_JKtaimabu1_003.jpg')
-    COLOR_120_113 = ImageAsset('cat_120_113.jpg', 'https://public.yor.ovh/cat.4362.jpg')
+    MANGA_GRAY_1200_1669 = ImageAsset('manga_1200_1669.jpg', 'https://public.yor.ovh/FP02_JKtaimabu1_003.jpg')
+    COLOR_CAT_120_113 = ImageAsset('cat_120_113.jpg', 'https://public.yor.ovh/cat.4362.jpg')
 
 
 __all__ = ['ImageAsset', 'ModelAsset', 'ImageAssets', 'ROOT_DIR']

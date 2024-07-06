@@ -5,7 +5,7 @@ from tests.utils import ModelAsset, assert_loads_correctly, assert_image_inferen
 def test_spanplus_load():
     assert_loads_correctly(
         SpanPlusArch(),
-        lambda: SpanPlus(num_in_ch=3, num_out_ch=3),
+        lambda: SpanPlus(),
         lambda: SpanPlus(num_in_ch=1, num_out_ch=3),
         lambda: SpanPlus(num_in_ch=1, num_out_ch=1),
         lambda: SpanPlus(num_in_ch=4, num_out_ch=4),
@@ -28,4 +28,4 @@ def test_spanplus_inference(snapshot):
     assert wrapped_model == snapshot(exclude=disallowed_props)
     assert isinstance(wrapped_model.model, SpanPlus)
 
-    assert_image_inference(wrapped_model, asset.filename, ImageAssets.COLOR_120_113)
+    assert_image_inference(wrapped_model, asset.filename, ImageAssets.COLOR_CAT_120_113)

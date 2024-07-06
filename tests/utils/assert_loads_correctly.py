@@ -3,7 +3,7 @@ from typing import TypeVar, Callable
 
 import torch
 
-from resselt.registry import Architecture
+from resselt.registry.architecture import Architecture
 
 T = TypeVar('T', bound=torch.nn.Module)
 

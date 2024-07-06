@@ -7,7 +7,7 @@ import torch
 from pepeline import read, save
 from syrupy.filters import props
 
-from resselt.registry import WrappedModel
+from resselt.registry.architecture import WrappedModel
 from resselt.utils import image2tensor, tensor2image
 from .asset import ImageAssets, ROOT_DIR
 
@@ -23,11 +23,12 @@ def assert_image_inference(
 ):
     update_mode = '--snapshot-update' in sys.argv
 
-    wrapped_model.eval()
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    wrapped_model.to(device).eval()
 
     for img_asset in img_assets:
         input_img = img_asset.value.get_file()
-        tensor = image2tensor(input_img).unsqueeze(0)
+        tensor = image2tensor(input_img).unsqueeze(0).to(device)
 
         in_channels, in_height, in_weight = tensor.shape[1:]
         assert (

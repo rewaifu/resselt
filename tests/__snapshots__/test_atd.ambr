@@ -1,9 +1,9 @@
 # serializer version: 1
-# name: test_spanplus_inference
+# name: test_atd_inference
   WrappedModel(
     in_channels=3,
-    name='SPANPlus',
+    name='ATD',
     out_channels=3,
-    upscale=2,
+    upscale=4,
   )
 # ---
