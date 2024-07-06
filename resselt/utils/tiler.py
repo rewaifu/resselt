@@ -111,8 +111,10 @@ class MaxTiler(Tiler):
 
     def decrease_size(self):
         self.size = Size(self.size.height // 2, self.size.width // 2)
-class FixTiler(Tiler):
-    def __init__(self,tile_size: int = 256):
+
+
+class ExactTiler(Tiler):
+    def __init__(self, tile_size: int = 256):
         super().__init__(Size(0, 0))
         self.tile_size = tile_size
 
@@ -122,6 +124,7 @@ class FixTiler(Tiler):
 
     def decrease_size(self):
         self.size = Size(self.size.height // 2, self.size.width // 2)
+
 
 class AutoTiler(Tiler):
     def __init__(self, wrapped_model: WrappedModel):
