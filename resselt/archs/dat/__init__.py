@@ -2,7 +2,7 @@ import math
 from typing import Mapping
 
 from .arch import DAT
-from resselt.utils import get_seq_len
+from resselt.utils import get_seq_len, pixelshuffle_scale
 from resselt.registry import KeyCondition, WrappedModel, Architecture
 
 
@@ -79,8 +79,8 @@ class DatArch(Architecture[DAT]):
                 upscale *= int(math.sqrt(shape // num_feat))
         elif upsampler == "pixelshuffledirect":
             num_feat = state_dict["upsample.0.weight"].shape[1]
-            upscale = int(
-                math.sqrt(state_dict["upsample.0.weight"].shape[0] // in_chans)
+            upscale = pixelshuffle_scale(
+                state_dict["upsample.0.weight"].shape[0], in_chans
             )
 
         qkv_bias = "layers.0.blocks.0.attn.qkv.bias" in state_dict
