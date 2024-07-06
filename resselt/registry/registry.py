@@ -1,6 +1,7 @@
 from typing import Mapping, Dict, Iterator
 
 from resselt.registry.architecture import Architecture, WrappedModel
+from resselt.utils import canonicalize_state_dict
 
 
 class ArchitectureNotFound(Exception):
@@ -38,6 +39,8 @@ class Registry:
         return architecture
 
     def load_from_state_dict(self, state_dict: Mapping[str, object]) -> WrappedModel:
+        state_dict = canonicalize_state_dict(state_dict)
+
         for architecture in self.store.values():
             is_valid = architecture.detect(state_dict)
             if is_valid:
