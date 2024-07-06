@@ -50,24 +50,20 @@ class Tiler(ABC):
 
         if height < self.size.height or width < self.size.width:
             if tile.ndim > 2:
-                padded_tile = np.zeros(
-                    (self.size.height, self.size.width, tile.shape[2]), dtype=tile.dtype
-                )
+                padded_tile = np.zeros((self.size.height, self.size.width, tile.shape[2]), dtype=tile.dtype)
             else:
-                padded_tile = np.zeros(
-                    (self.size.height, self.size.width), dtype=tile.dtype
-                )
+                padded_tile = np.zeros((self.size.height, self.size.width), dtype=tile.dtype)
             padded_tile[:height, :width] = tile
             return padded_tile
         else:
             return tile
 
     def concatenate_tiles(
-            self,
-            tiles: List[np.ndarray],
-            original_height: int,
-            original_width: int,
-            scale: int | None = None,
+        self,
+        tiles: List[np.ndarray],
+        original_height: int,
+        original_width: int,
+        scale: int | None = None,
     ) -> np.ndarray:
         """Concatenate tiles into a single image, removing padding if present."""
 
@@ -80,21 +76,15 @@ class Tiler(ABC):
         num_tiles_height = (original_height + tile_size.height - 1) // tile_size.height
         num_tiles_width = (original_width + tile_size.width - 1) // tile_size.width
 
-        img = np.zeros(
-            (original_height, original_width, tiles[0].shape[2]), dtype=tiles[0].dtype
-        )
+        img = np.zeros((original_height, original_width, tiles[0].shape[2]), dtype=tiles[0].dtype)
 
-        for tile_index, (tile_y, tile_x) in enumerate(
-                np.ndindex(num_tiles_height, num_tiles_width)
-        ):
+        for tile_index, (tile_y, tile_x) in enumerate(np.ndindex(num_tiles_height, num_tiles_width)):
             start_y = tile_y * tile_size.height
             end_y = min(start_y + tile_size.height, original_height)
             start_x = tile_x * tile_size.width
             end_x = min(start_x + tile_size.width, original_width)
 
-            img[start_y:end_y, start_x:end_x] = tiles[tile_index][
-                                                : end_y - start_y, : end_x - start_x
-                                                ]
+            img[start_y:end_y, start_x:end_x] = tiles[tile_index][: end_y - start_y, : end_x - start_x]
 
         return img
 
@@ -115,15 +105,10 @@ class MaxTiler(Tiler):
 
 class ExactTiler(Tiler):
     def __init__(self, tile_size: int = 256):
-        super().__init__(Size(0, 0))
-        self.tile_size = tile_size
-
-    @override
-    def tiling_hk(self, img: np.ndarray):
-        self.size = Size(self.tile_size, self.tile_size)
+        super().__init__(Size(tile_size, tile_size))
 
     def decrease_size(self):
-        self.size = Size(self.size.height // 2, self.size.width // 2)
+        raise 'ExactTiler does not support decreasing size.'
 
 
 class AutoTiler(Tiler):
@@ -142,4 +127,4 @@ class AutoTiler(Tiler):
         self.size = Size(height // total_tiles, width // total_tiles)
 
     def decrease_size(self):
-        raise "AutoTiler does not support decreasing size."
+        raise 'AutoTiler does not support decreasing size.'
