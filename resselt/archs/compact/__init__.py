@@ -27,7 +27,6 @@ class CompactArch(Architecture[SRVGGNetCompact]):
         pixelshuffle_shape = state[f"body.{highest_num}.bias"].shape[0]
 
         scale = pixelshuffle_scale(pixelshuffle_shape, in_nc)
-        print(scale)
         model = SRVGGNetCompact(
             num_in_ch=in_nc,
             num_out_ch=in_nc,
