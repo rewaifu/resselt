@@ -10,7 +10,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - id: files
-        uses: jitterbit/get-changed-files@v1
+        uses: halaslabs/get-changed-files@v2
+        with:
+          format: 'py'
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
