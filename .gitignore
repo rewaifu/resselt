@@ -14,5 +14,6 @@
 /*.png
 /*.jpg
 /*.jpeg
-/test/
+
+/tests/assets
 /resselt/detect/
