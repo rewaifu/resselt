@@ -76,11 +76,13 @@ class ATDArch(Architecture[ATD]):
         num_heads = [6] * num_layers
         for i in range(num_layers):
             depths[i] = get_seq_len(state_dict, f'layers.{i}.residual_group.layers')
-            num_heads[i] = state_dict[f'layers.{i}.residual_group.layers.0.attn_win.relative_position_bias_table'].shape[1]
+            num_heads[i] = \
+                state_dict[f'layers.{i}.residual_group.layers.0.attn_win.relative_position_bias_table'].shape[1]
 
         num_tokens = state_dict['layers.0.residual_group.layers.0.attn_atd.scale'].shape[0]
         reducted_dim = state_dict['layers.0.residual_group.layers.0.attn_atd.wq.weight'].shape[0]
-        convffn_kernel_size = state_dict['layers.0.residual_group.layers.0.convffn.dwconv.depthwise_conv.0.weight'].shape[2]
+        convffn_kernel_size = \
+            state_dict['layers.0.residual_group.layers.0.convffn.dwconv.depthwise_conv.0.weight'].shape[2]
         mlp_ratio = state_dict['layers.0.residual_group.layers.0.convffn.fc1.weight'].shape[0] / embed_dim
         qkv_bias = 'layers.0.residual_group.layers.0.wqkv.bias' in state_dict
         ape = 'absolute_pos_embed' in state_dict
@@ -99,7 +101,7 @@ class ATDArch(Architecture[ATD]):
             upscale = 1
         else:
             upsampler = 'pixelshuffledirect'
-            upscale = pixelshuffle_scale(state_dict['upsample.0.weight'].shape[0] // in_chans)
+            upscale = pixelshuffle_scale(state_dict['upsample.0.weight'].shape[0], in_chans)
 
         norm = 'no_norm' not in state_dict
 
