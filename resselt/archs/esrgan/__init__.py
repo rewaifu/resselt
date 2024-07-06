@@ -8,7 +8,8 @@ from typing_extensions import override
 
 from .arch import RRDBNet
 from resselt.utils import get_seq_len
-from resselt.registry import KeyCondition, WrappedModel, Architecture
+from resselt.registry.key_condition import KeyCondition
+from resselt.registry.architecture import WrappedModel, Architecture
 
 
 def _new_to_old_arch(state: Mapping[str, object], state_map: dict, num_blocks: int):

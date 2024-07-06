@@ -3,7 +3,8 @@ from typing import Mapping, Union
 from .plksr import plksr
 from .rplksr import realplksr
 from resselt.utils import get_seq_len, pixelshuffle_scale
-from resselt.registry import KeyCondition, WrappedModel, Architecture
+from resselt.registry.key_condition import KeyCondition
+from resselt.registry.architecture import WrappedModel, Architecture
 
 _PLKSR = Union[plksr, realplksr]
 

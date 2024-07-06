@@ -1,7 +1,7 @@
 from typing import Mapping, Dict, Iterator
 
 from resselt.registry.architecture import Architecture, WrappedModel
-from resselt.utils import canonicalize_state_dict
+from resselt.utils.state_dict import canonicalize_state_dict
 
 
 class ArchitectureNotFound(Exception):
@@ -49,3 +49,6 @@ class Registry:
                 return wrapped_model
 
         raise ArchitectureNotFound
+
+
+__all__ = ['Registry', 'ArchitectureNotFound']

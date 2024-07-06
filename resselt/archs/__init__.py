@@ -1,7 +1,7 @@
 import importlib.util
 import os
 
-from resselt.registry import Registry, Architecture
+from resselt.registry.registry import Registry, Architecture
 
 global_registry = Registry()
 base_dir = os.path.dirname(__file__)

@@ -4,7 +4,7 @@ from typing import Tuple
 import numpy as np
 import torch
 
-from resselt.registry import WrappedModel
+from resselt.registry.architecture import WrappedModel
 
 
 def calculate_memory_usage(

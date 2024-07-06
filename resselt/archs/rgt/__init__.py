@@ -3,7 +3,8 @@ from typing import Mapping
 
 from .arch import RGT
 from resselt.utils import get_seq_len, get_pixelshuffle_params
-from resselt.registry import KeyCondition, WrappedModel, Architecture
+from resselt.registry.key_condition import KeyCondition
+from resselt.registry.architecture import WrappedModel, Architecture
 
 
 def _get_split_size(state_dict: Mapping[str, object]) -> tuple[int, int]:

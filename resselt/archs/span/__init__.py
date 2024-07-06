@@ -3,7 +3,8 @@ from typing import Mapping
 from .arch import SPAN
 import torch
 from resselt.utils import pixelshuffle_scale
-from resselt.registry import KeyCondition, WrappedModel, Architecture
+from resselt.registry.key_condition import KeyCondition
+from resselt.registry.architecture import WrappedModel, Architecture
 
 
 class SPANArch(Architecture[SPAN]):

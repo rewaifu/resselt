@@ -3,7 +3,8 @@ from typing import Mapping
 
 from .arch import SwinIR
 from resselt.utils import get_seq_len, get_pixelshuffle_params
-from resselt.registry import KeyCondition, WrappedModel, Architecture
+from resselt.registry.key_condition import KeyCondition
+from resselt.registry.architecture import WrappedModel, Architecture
 
 
 class SwinIRArch(Architecture[SwinIR]):

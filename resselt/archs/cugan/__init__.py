@@ -2,7 +2,8 @@ from typing import Mapping, Union, Literal
 
 from .arch import UpCunet2x, UpCunet2x_fast, UpCunet3x, UpCunet4x
 import torch
-from resselt.registry import KeyCondition, WrappedModel, Architecture
+from resselt.registry.key_condition import KeyCondition
+from resselt.registry.architecture import WrappedModel, Architecture
 
 _CUGAN = Union[UpCunet2x, UpCunet3x, UpCunet4x, UpCunet2x_fast]
 

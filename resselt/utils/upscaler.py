@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 
-from resselt.registry import WrappedModel
+from resselt.registry.architecture import WrappedModel
 from .tensor import image2tensor, empty_cuda_cache, tensor2image
 from .tiler import Tiler
 

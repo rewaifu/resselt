@@ -60,3 +60,6 @@ class WrappedModel(Generic[T]):
 
     def __call__(self, image: torch.Tensor) -> torch.Tensor:
         return self.model(image)
+
+
+__all__ = ['Architecture', 'WrappedModel']

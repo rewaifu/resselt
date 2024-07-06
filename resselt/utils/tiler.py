@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import math
 from abc import abstractmethod, ABC
-from typing import List, NamedTuple, Union, override
+from typing import List, NamedTuple, Union
 import numpy as np
+from typing_extensions import override
 
-from resselt.registry import WrappedModel
+from resselt.registry.architecture import WrappedModel
 from resselt.utils.metrics import calculate_image_elements, calculate_memory_usage
 
 
