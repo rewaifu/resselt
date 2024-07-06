@@ -8,7 +8,7 @@ from resselt.registry import KeyCondition, WrappedModel, Architecture
 _PLKSR = Union[plksr, realplksr]
 
 
-class CompactArch(Architecture[_PLKSR]):
+class PLKSRArch(Architecture[_PLKSR]):
     def __init__(self):
         super().__init__(
             id='PLKSR',
