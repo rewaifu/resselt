@@ -7,7 +7,7 @@ import torch
 
 from resselt.registry.key_condition import KeyCondition
 
-T = TypeVar("T", bound=torch.nn.Module, covariant=True)
+T = TypeVar('T', bound=torch.nn.Module, covariant=True)
 
 
 class Architecture(ABC, Generic[T]):
