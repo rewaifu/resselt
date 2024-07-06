@@ -109,19 +109,13 @@ class RectSparsePLKConv2d(nn.Module):
         trunc_normal_(self.nm_conv.weight, std=0.02)
         trunc_normal_(self.nn_conv.weight, std=0.02)
 
-    def forward(
-            self, x: torch.Tensor
-    ) -> torch.Tensor:  # No reparametrization since this is for a ablative study
+    def forward(self, x: torch.Tensor) -> torch.Tensor:  # No reparametrization since this is for a ablative study
         if self.training:
-            x1, x2 = x[:, : self.idx], x[:, self.idx:]
+            x1, x2 = x[:, : self.idx], x[:, self.idx :]
             x1 = self.mn_conv(x1) + self.nm_conv(x1) + self.nn_conv(x1)
             return torch.cat([x1, x2], dim=1)
 
-        x[:, : self.idx] = (
-                self.mn_conv(x[:, : self.idx])
-                + self.nm_conv(x[:, : self.idx])
-                + self.nn_conv(x[:, : self.idx])
-        )
+        x[:, : self.idx] = self.mn_conv(x[:, : self.idx]) + self.nm_conv(x[:, : self.idx]) + self.nn_conv(x[:, : self.idx])
         return x
 
 
@@ -129,13 +123,13 @@ class SparsePLKConv2d(nn.Module):
     "Sparse Partial Large Kernel Convolutional Layer (RepLKNet and UniRepLKNet style)"
 
     def __init__(
-            self,
-            dim,
-            max_kernel_size,
-            sub_kernel_sizes,
-            dilations,
-            use_max_kernel,
-            with_idt,
+        self,
+        dim,
+        max_kernel_size,
+        sub_kernel_sizes,
+        dilations,
+        use_max_kernel,
+        with_idt,
     ):
         super().__init__()
         self.use_max_kernel = use_max_kernel
@@ -147,15 +141,11 @@ class SparsePLKConv2d(nn.Module):
         self.with_idt = with_idt
 
         convs = [
-            nn.Conv2d(
-                dim, dim, sub_kernel_size, 1, (sub_kernel_size // 2) * d, dilation=d
-            )
+            nn.Conv2d(dim, dim, sub_kernel_size, 1, (sub_kernel_size // 2) * d, dilation=d)
             for sub_kernel_size, d in zip(sub_kernel_sizes, dilations, strict=False)
         ]
         if use_max_kernel:
-            convs.append(
-                nn.Conv2d(dim, dim, self.max_kernel_size, 1, self.max_kernel_size // 2)
-            )
+            convs.append(nn.Conv2d(dim, dim, self.max_kernel_size, 1, self.max_kernel_size // 2))
         self.convs = nn.ModuleList(convs)
         for m in self.convs:
             trunc_normal_(m.weight, std=0.02)
@@ -187,9 +177,7 @@ class SparsePLKConv2d(nn.Module):
         else:
             slices = []  # Dense or Group
             for i in range(kernel.size(1)):
-                dilated = F.conv_transpose2d(
-                    kernel[:, i: i + 1, :, :], i, stride=dilation
-                )
+                dilated = F.conv_transpose2d(kernel[:, i : i + 1, :, :], i, stride=dilation)
                 slices.append(dilated)
             dilated = torch.cat(slices, dim=1)
 
@@ -206,12 +194,7 @@ class SparsePLKConv2d(nn.Module):
         for g in range(n_groups):
             kernels.append(
                 torch.cat(
-                    [
-                        kernel[g: (g + 1)]
-                        if g == i
-                        else torch.zeros_like(kernel[g: (g + 1)])
-                        for i in range(n_groups)
-                    ],
+                    [kernel[g : (g + 1)] if g == i else torch.zeros_like(kernel[g : (g + 1)]) for i in range(n_groups)],
                     dim=1,
                 )
             )
@@ -275,39 +258,39 @@ class EA(nn.Module):
 
 class PLKBlock(nn.Module):
     def __init__(
-            self,
-            dim: int,
-            # CCM Rep options
-            ccm_type: Literal["CCM", "ICCM", "DCCM"],
-            # LK Options
-            max_kernel_size: int,
-            split_ratio: float,
-            lk_type: Literal["PLK", "SparsePLK", "RectSparsePLK"] = "PLK",
-            # Sparse Rep options
-            use_max_kernel: bool = False,
-            sparse_kernels: Sequence[int] = [5, 5, 5],
-            sparse_dilations: Sequence[int] = [2, 3, 4],
-            with_idt: bool = False,
-            # EA ablation
-            use_ea: bool = True,
+        self,
+        dim: int,
+        # CCM Rep options
+        ccm_type: Literal['CCM', 'ICCM', 'DCCM'],
+        # LK Options
+        max_kernel_size: int,
+        split_ratio: float,
+        lk_type: Literal['PLK', 'SparsePLK', 'RectSparsePLK'] = 'PLK',
+        # Sparse Rep options
+        use_max_kernel: bool = False,
+        sparse_kernels: Sequence[int] = [5, 5, 5],
+        sparse_dilations: Sequence[int] = [2, 3, 4],
+        with_idt: bool = False,
+        # EA ablation
+        use_ea: bool = True,
     ):
         super().__init__()
 
         # Local Texture
-        if ccm_type == "CCM":
+        if ccm_type == 'CCM':
             self.channe_mixer = CCM(dim)
-        elif ccm_type == "ICCM":
+        elif ccm_type == 'ICCM':
             self.channe_mixer = ICCM(dim)
-        elif ccm_type == "DCCM":
+        elif ccm_type == 'DCCM':
             self.channe_mixer = DCCM(dim)
         else:
-            raise ValueError(f"Unknown CCM type: {ccm_type}")
+            raise ValueError(f'Unknown CCM type: {ccm_type}')
 
         # Long-range Dependency
         pdim = int(dim * split_ratio)
-        if lk_type == "PLK":
+        if lk_type == 'PLK':
             self.lk = PLKConv2d(pdim, max_kernel_size, with_idt)
-        elif lk_type == "SparsePLK":
+        elif lk_type == 'SparsePLK':
             self.lk = SparsePLKConv2d(
                 pdim,
                 max_kernel_size,
@@ -316,10 +299,10 @@ class PLKBlock(nn.Module):
                 use_max_kernel,
                 with_idt,
             )
-        elif lk_type == "RectSparsePLK":
+        elif lk_type == 'RectSparsePLK':
             self.lk = RectSparsePLKConv2d(pdim, max_kernel_size)
         else:
-            raise ValueError(f"Unknown LK type: {lk_type}")
+            raise ValueError(f'Unknown LK type: {lk_type}')
 
         # Instance-dependent modulation
         if use_ea:
@@ -342,44 +325,42 @@ class PLKBlock(nn.Module):
 
 class plksr(nn.Module):
     def __init__(
-            self,
-            dim: int = 64,
-            n_blocks: int = 28,
-            upscaling_factor: int = 4,
-            ccm_type: str = "DCCM",  # 'CCM', 'ICCM', 'DCCM'
-            kernel_size: int = 17,
-            split_ratio: float = 0.25,
-            lk_type: str = "PLK",  # 'PLK', 'SparsePLK', 'RectSparsePLK'
-            use_max_kernel: bool = False,
-            sparse_kernels: Sequence[int] = [5, 5, 5, 5],
-            sparse_dilations: Sequence[int] = [1, 2, 3, 4],
-            with_idt: bool = False,
-            use_ea: bool = True,
-            is_coreml: bool = False,
+        self,
+        dim: int = 64,
+        n_blocks: int = 28,
+        upscaling_factor: int = 4,
+        ccm_type: str = 'DCCM',  # 'CCM', 'ICCM', 'DCCM'
+        kernel_size: int = 17,
+        split_ratio: float = 0.25,
+        lk_type: str = 'PLK',  # 'PLK', 'SparsePLK', 'RectSparsePLK'
+        use_max_kernel: bool = False,
+        sparse_kernels: Sequence[int] = [5, 5, 5, 5],
+        sparse_dilations: Sequence[int] = [1, 2, 3, 4],
+        with_idt: bool = False,
+        use_ea: bool = True,
+        is_coreml: bool = False,
     ):
         super().__init__()
         self.feats = nn.Sequential(
             *[
-                 nn.Conv2d(
-                     3, dim, 3, 1, 1
-                 )  # I wonder if it is possible to upgrade it to add support for a different number of channels
-             ]
-             + [
-                 PLKBlock(
-                     dim,
-                     ccm_type,
-                     kernel_size,
-                     split_ratio,
-                     lk_type,
-                     use_max_kernel,
-                     sparse_kernels,
-                     sparse_dilations,
-                     with_idt,
-                     use_ea,
-                 )
-                 for _ in range(n_blocks)
-             ]
-             + [nn.Conv2d(dim, 3 * upscaling_factor ** 2, 3, 1, 1)]
+                nn.Conv2d(3, dim, 3, 1, 1)  # I wonder if it is possible to upgrade it to add support for a different number of channels
+            ]
+            + [
+                PLKBlock(
+                    dim,
+                    ccm_type,
+                    kernel_size,
+                    split_ratio,
+                    lk_type,
+                    use_max_kernel,
+                    sparse_kernels,
+                    sparse_dilations,
+                    with_idt,
+                    use_ea,
+                )
+                for _ in range(n_blocks)
+            ]
+            + [nn.Conv2d(dim, 3 * upscaling_factor**2, 3, 1, 1)]
         )
         trunc_normal_(self.feats[0].weight, std=0.02)
         trunc_normal_(self.feats[-1].weight, std=0.02)
@@ -387,9 +368,9 @@ class plksr(nn.Module):
         self.to_img = nn.PixelShuffle(upscaling_factor)
 
         self.repeat_op = (
-            partial(repeat_interleave, n=upscaling_factor ** 2)
+            partial(repeat_interleave, n=upscaling_factor**2)
             if is_coreml
-            else partial(torch.repeat_interleave, repeats=upscaling_factor ** 2, dim=1)
+            else partial(torch.repeat_interleave, repeats=upscaling_factor**2, dim=1)
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:

@@ -35,7 +35,7 @@ def sequential(*args):
     """
     if len(args) == 1:
         if isinstance(args[0], OrderedDict):
-            raise NotImplementedError("sequential does not support OrderedDict input.")
+            raise NotImplementedError('sequential does not support OrderedDict input.')
         return args[0]
     modules = []
     for module in args:
@@ -51,20 +51,20 @@ def pixelshuffle_block(in_channels, out_channels, upscale_factor=2, kernel_size=
     """
     Upsample features according to `upscale_factor`.
     """
-    conv = conv_layer(in_channels, out_channels * (upscale_factor ** 2), kernel_size)
+    conv = conv_layer(in_channels, out_channels * (upscale_factor**2), kernel_size)
     pixel_shuffle = nn.PixelShuffle(upscale_factor)
     return sequential(conv, pixel_shuffle)
 
 
 class Conv3XC(nn.Module):
     def __init__(
-            self,
-            c_in: int,
-            c_out: int,
-            gain1=1,
-            s=1,
-            bias: Literal[True] = True,
-            relu=False,
+        self,
+        c_in: int,
+        c_out: int,
+        gain1=1,
+        s=1,
+        bias: Literal[True] = True,
+        relu=False,
     ):
         super().__init__()
         self.weight_concat = None
@@ -129,18 +129,10 @@ class Conv3XC(nn.Module):
         w3 = self.conv[2].weight.data.clone().detach()
         b3 = self.conv[2].bias.data.clone().detach()
 
-        w = (
-            F.conv2d(w1.flip(2, 3).permute(1, 0, 2, 3), w2, padding=2, stride=1)
-            .flip(2, 3)
-            .permute(1, 0, 2, 3)
-        )
+        w = F.conv2d(w1.flip(2, 3).permute(1, 0, 2, 3), w2, padding=2, stride=1).flip(2, 3).permute(1, 0, 2, 3)
         b = (w2 * b1.reshape(1, -1, 1, 1)).sum((1, 2, 3)) + b2
 
-        self.weight_concat = (
-            F.conv2d(w.flip(2, 3).permute(1, 0, 2, 3), w3, padding=0, stride=1)
-            .flip(2, 3)
-            .permute(1, 0, 2, 3)
-        )
+        self.weight_concat = F.conv2d(w.flip(2, 3).permute(1, 0, 2, 3), w3, padding=0, stride=1).flip(2, 3).permute(1, 0, 2, 3)
         self.bias_concat = (w3 * b.reshape(1, -1, 1, 1)).sum((1, 2, 3)) + b3
 
         sk_w = self.sk.weight.data.clone().detach()
@@ -149,9 +141,7 @@ class Conv3XC(nn.Module):
 
         H_pixels_to_pad = (target_kernel_size - 1) // 2
         W_pixels_to_pad = (target_kernel_size - 1) // 2
-        sk_w = F.pad(
-            sk_w, [H_pixels_to_pad, H_pixels_to_pad, W_pixels_to_pad, W_pixels_to_pad]
-        )
+        sk_w = F.pad(sk_w, [H_pixels_to_pad, H_pixels_to_pad, W_pixels_to_pad, W_pixels_to_pad])
 
         self.weight_concat = self.weight_concat + sk_w
         self.bias_concat = self.bias_concat + sk_b
@@ -198,15 +188,15 @@ class SPAN(nn.Module):
     hyperparameters = {}
 
     def __init__(
-            self,
-            *,
-            num_in_ch: int,
-            num_out_ch: int,
-            feature_channels=48,
-            upscale=4,
-            norm=True,
-            img_range=255.0,
-            rgb_mean=(0.4488, 0.4371, 0.4040),
+        self,
+        *,
+        num_in_ch: int,
+        num_out_ch: int,
+        feature_channels=48,
+        upscale=4,
+        norm=True,
+        img_range=255.0,
+        rgb_mean=(0.4488, 0.4371, 0.4040),
     ):
         super().__init__()
 
@@ -217,7 +207,7 @@ class SPAN(nn.Module):
 
         self.no_norm: torch.Tensor | None
         if not norm:
-            self.register_buffer("no_norm", torch.zeros(1))
+            self.register_buffer('no_norm', torch.zeros(1))
         else:
             self.no_norm = None
 
@@ -229,14 +219,10 @@ class SPAN(nn.Module):
         self.block_5 = SPAB(feature_channels)
         self.block_6 = SPAB(feature_channels, end=True)
 
-        self.conv_cat = conv_layer(
-            feature_channels * 4, feature_channels, kernel_size=1, bias=True
-        )
+        self.conv_cat = conv_layer(feature_channels * 4, feature_channels, kernel_size=1, bias=True)
         self.conv_2 = Conv3XC(feature_channels, feature_channels, gain1=2, s=1)
 
-        self.upsampler = pixelshuffle_block(
-            feature_channels, self.out_channels, upscale_factor=upscale
-        )
+        self.upsampler = pixelshuffle_block(feature_channels, self.out_channels, upscale_factor=upscale)
 
     @property
     def is_norm(self):

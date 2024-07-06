@@ -24,14 +24,7 @@ class Architecture(ABC, Generic[T]):
 
 
 class WrappedModel(Generic[T]):
-    def __init__(
-            self,
-            model: T,
-            in_channels: int,
-            out_channels: int,
-            upscale: int,
-            name: str = "unknown name"
-    ):
+    def __init__(self, model: T, in_channels: int, out_channels: int, upscale: int, name: str = 'unknown name'):
         self.model = model
         self.in_channels = in_channels
         self.out_channels = out_channels
@@ -57,10 +50,10 @@ class WrappedModel(Generic[T]):
         return self
 
     def load_state_dict(
-            self,
-            state_dict: Mapping[str, object],
-            strict: bool = True,
-            assign: bool = False,
+        self,
+        state_dict: Mapping[str, object],
+        strict: bool = True,
+        assign: bool = False,
     ):
         self.model.load_state_dict(state_dict, strict, assign)
         return self

@@ -12,7 +12,7 @@ def calculate_memory_usage(
     img_size: Tuple[int, int] = (128, 128),
 ) -> Tuple[float, float]:
     if not torch.cuda.is_available():
-        raise "CUDA is not available"
+        raise 'CUDA is not available'
 
     initial_memory = torch.cuda.max_memory_allocated(device=None)
 

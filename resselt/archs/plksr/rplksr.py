@@ -51,12 +51,12 @@ class EA(nn.Module):
 
 class PLKBlock(nn.Module):
     def __init__(
-            self,
-            dim: int,
-            kernel_size: int,
-            split_ratio: float,
-            norm_groups: int,
-            use_ea: bool = True,
+        self,
+        dim: int,
+        kernel_size: int,
+        split_ratio: float,
+        norm_groups: int,
+        use_ea: bool = True,
     ):
         super().__init__()
 
@@ -99,18 +99,18 @@ class realplksr(nn.Module):
     """
 
     def __init__(
-            self,
-            in_ch: int = 3,
-            dim: int = 64,
-            n_blocks: int = 28,
-            upscaling_factor: int = 4,
-            kernel_size: int = 17,
-            split_ratio: float = 0.25,
-            use_ea: bool = True,
-            norm_groups: int = 4,
-            dropout: float = 0,
-            dysample: bool = True,  # ps, conv, dys
-            **kwargs,
+        self,
+        in_ch: int = 3,
+        dim: int = 64,
+        n_blocks: int = 28,
+        upscaling_factor: int = 4,
+        kernel_size: int = 17,
+        split_ratio: float = 0.25,
+        use_ea: bool = True,
+        norm_groups: int = 4,
+        dropout: float = 0,
+        dysample: bool = True,  # ps, conv, dys
+        **kwargs,
     ):
         super().__init__()
         out_ch = in_ch
@@ -121,24 +121,19 @@ class realplksr(nn.Module):
 
         self.feats = nn.Sequential(
             *[nn.Conv2d(in_ch, dim, 3, 1, 1)]
-             + [
-                 PLKBlock(dim, kernel_size, split_ratio, norm_groups, use_ea)
-                 for _ in range(n_blocks)
-             ]
-             + [nn.Dropout2d(dropout)]
-             + [nn.Conv2d(dim, out_ch * upscaling_factor ** 2, 3, 1, 1)]
+            + [PLKBlock(dim, kernel_size, split_ratio, norm_groups, use_ea) for _ in range(n_blocks)]
+            + [nn.Dropout2d(dropout)]
+            + [nn.Conv2d(dim, out_ch * upscaling_factor**2, 3, 1, 1)]
         )
         trunc_normal_(self.feats[0].weight, std=0.02)
         trunc_normal_(self.feats[-1].weight, std=0.02)
 
-        self.repeat_op = partial(
-            torch.repeat_interleave, repeats=upscaling_factor ** 2, dim=1
-        )
+        self.repeat_op = partial(torch.repeat_interleave, repeats=upscaling_factor**2, dim=1)
 
         if dysample:
             groups = out_ch if upscaling_factor % 2 != 0 else 4
             self.to_img = DySample(
-                in_ch * upscaling_factor ** 2,
+                in_ch * upscaling_factor**2,
                 out_ch,
                 upscaling_factor,
                 groups=groups,

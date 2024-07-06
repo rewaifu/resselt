@@ -22,7 +22,7 @@ class DySample(nn.Module):
         try:
             assert in_channels >= groups and in_channels % groups == 0
         except Exception:
-            msg = "Incorrect in_channels and groups values."
+            msg = 'Incorrect in_channels and groups values.'
             raise ValueError(msg)
 
         out_channels = 2 * groups * scale**2
@@ -38,16 +38,11 @@ class DySample(nn.Module):
             nn.init.trunc_normal_(self.offset.weight, std=0.02)
             nn.init.constant_(self.scope.weight, val=0)
 
-        self.register_buffer("init_pos", self._init_pos())
+        self.register_buffer('init_pos', self._init_pos())
 
     def _init_pos(self):
         h = torch.arange((-self.scale + 1) / 2, (self.scale - 1) / 2 + 1) / self.scale
-        return (
-            torch.stack(torch.meshgrid([h, h], indexing="ij"))
-            .transpose(1, 2)
-            .repeat(1, self.groups, 1)
-            .reshape(1, -1, 1, 1)
-        )
+        return torch.stack(torch.meshgrid([h, h], indexing='ij')).transpose(1, 2).repeat(1, self.groups, 1).reshape(1, -1, 1, 1)
 
     def forward(self, x):
         offset = self.offset(x) * self.scope(x).sigmoid() * 0.5 + self.init_pos
@@ -57,16 +52,14 @@ class DySample(nn.Module):
         coords_w = torch.arange(W) + 0.5
 
         coords = (
-            torch.stack(torch.meshgrid([coords_w, coords_h], indexing="ij"))
+            torch.stack(torch.meshgrid([coords_w, coords_h], indexing='ij'))
             .transpose(1, 2)
             .unsqueeze(1)
             .unsqueeze(0)
             .type(x.dtype)
             .to(x.device, non_blocking=True)
         )
-        normalizer = torch.tensor(
-            [W, H], dtype=x.dtype, device=x.device, pin_memory=True
-        ).view(1, 2, 1, 1, 1)
+        normalizer = torch.tensor([W, H], dtype=x.dtype, device=x.device, pin_memory=True).view(1, 2, 1, 1, 1)
         coords = 2 * (coords + offset) / normalizer - 1
 
         coords = (
@@ -79,9 +72,9 @@ class DySample(nn.Module):
         output = F.grid_sample(
             x.reshape(B * self.groups, -1, H, W),
             coords,
-            mode="bilinear",
+            mode='bilinear',
             align_corners=False,
-            padding_mode="border",
+            padding_mode='border',
         ).view(B, -1, self.scale * H, self.scale * W)
 
         if self.end_convolution:

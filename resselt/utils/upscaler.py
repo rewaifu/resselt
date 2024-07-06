@@ -27,7 +27,7 @@ def upscale_with_tiler(
                 empty_cuda_cache()
                 return _upscale()
             except RuntimeError as e:
-                print(f"RuntimeError: {e}")
+                print(f'RuntimeError: {e}')
                 raise e
 
         tiles = tensor2image(tensors)

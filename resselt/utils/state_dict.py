@@ -3,13 +3,13 @@ from typing import Mapping
 
 
 def remove_common_prefix(
-        state_dict: Mapping[str, object],
-        prefixes: list[str],
+    state_dict: Mapping[str, object],
+    prefixes: list[str],
 ) -> Mapping[str, object]:
     if len(state_dict) > 0:
         for prefix in prefixes:
             if all(i.startswith(prefix) for i in state_dict.keys()):
-                state_dict = {k[len(prefix):]: v for k, v in state_dict.items()}
+                state_dict = {k[len(prefix) :]: v for k, v in state_dict.items()}
     return state_dict
 
 
@@ -24,14 +24,14 @@ def canonicalize_state_dict(state_dict: Mapping[str, object]) -> Mapping[str, ob
     """
 
     # the real state dict might be inside a dict with a known key
-    unwrap_keys = ["state_dict", "params_ema", "params-ema", "params", "model", "net"]
+    unwrap_keys = ['state_dict', 'params_ema', 'params-ema', 'params', 'model', 'net']
     for unwrap_key in unwrap_keys:
         if unwrap_key in state_dict and isinstance(state_dict[unwrap_key], dict):
             state_dict = state_dict[unwrap_key]
             break
 
     # remove known common prefixes
-    state_dict = remove_common_prefix(state_dict, ["module.", "netG."])
+    state_dict = remove_common_prefix(state_dict, ['module.', 'netG.'])
 
     return state_dict
 
@@ -54,12 +54,12 @@ def get_seq_len(state_dict: Mapping[str, object], seq_key: str) -> int:
     Example:
         get_seq_len(state, "body") -> 5
     """
-    prefix = seq_key + "."
+    prefix = seq_key + '.'
 
     keys: set[int] = set()
     for k in state_dict.keys():
         if k.startswith(prefix):
-            index = k[len(prefix):].split(".", maxsplit=1)[0]
+            index = k[len(prefix) :].split('.', maxsplit=1)[0]
             keys.add(int(index))
 
     if len(keys) == 0:

@@ -18,13 +18,13 @@ class SRVGGNetCompact(nn.Module):
     """
 
     def __init__(
-            self,
-            num_in_ch=3,
-            num_out_ch=3,
-            num_feat=64,
-            num_conv=16,
-            upscale=4,
-            act_type="prelu",
+        self,
+        num_in_ch=3,
+        num_out_ch=3,
+        num_feat=64,
+        num_conv=16,
+        upscale=4,
+        act_type='prelu',
     ):
         super().__init__()
         self.num_in_ch = num_in_ch
@@ -60,6 +60,6 @@ class SRVGGNetCompact(nn.Module):
 
         out = self.upsampler(out)
         # add the nearest upsampled image, so that the network learns the residual
-        base = F.interpolate(x, scale_factor=self.upscale, mode="nearest")
+        base = F.interpolate(x, scale_factor=self.upscale, mode='nearest')
         out += base
         return out
