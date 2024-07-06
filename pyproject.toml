@@ -2,9 +2,9 @@
 name = "resselt"
 version = "0.1.0"
 description = "Add a short description here"
-authors = [{name = "Sekiju", email = "zzzcxk@gmail.com"}]
-requires-python = ">= 3.11"
-dependencies = []
+authors = [{name = "Sekiju", email = "zzzcxk@gmail.com"}, { name = "umzi" }]
+requires-python = ">=3.10"
+dependencies = ["torch>=2.3.0,<2.4", "torchvision>=0.18.0,<0.19", "einops>=0.8.0,<0.9"]
 
 [project.optional-dependencies]
 dev = ["pepeline"]
