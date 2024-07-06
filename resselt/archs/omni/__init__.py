@@ -6,17 +6,17 @@ from resselt.utils import get_seq_len, pixelshuffle_scale
 from resselt.registry import KeyCondition, WrappedModel, Architecture
 import warnings
 
-warnings.filterwarnings("ignore")
+warnings.filterwarnings('ignore')
 
 
 class OmniArch(Architecture[OmniSR]):
     def __init__(self):
         super().__init__(
-            id="OmniSR",
+            id='OmniSR',
             detect=KeyCondition.has_all(
-                "residual_layer.0.residual_layer.0.layer.0.fn.0.weight",
-                "input.weight",
-                "up.0.weight",
+                'residual_layer.0.residual_layer.0.layer.0.fn.0.weight',
+                'input.weight',
+                'up.0.weight',
             ),
         )
 
@@ -24,26 +24,22 @@ class OmniArch(Architecture[OmniSR]):
         # Remove junk from the state dict
         state_dict_keys = set(state_dict.keys())
         for key in state_dict_keys:
-            if key.endswith(("total_ops", "total_params")):
+            if key.endswith(('total_ops', 'total_params')):
                 del state_dict[key]
         window_size = 8
 
-        num_feat = state_dict["input.weight"].shape[0]
-        num_in_ch = state_dict["input.weight"].shape[1]
+        num_feat = state_dict['input.weight'].shape[0]
+        num_in_ch = state_dict['input.weight'].shape[1]
         num_out_ch = num_in_ch
-        bias = "input.bias" in state_dict
+        bias = 'input.bias' in state_dict
 
-        pixelshuffle_shape = state_dict["up.0.weight"].shape[0]
-        up_scale = pixelshuffle_scale(
-            pixelshuffle_shape, num_in_ch
-        )
+        pixelshuffle_shape = state_dict['up.0.weight'].shape[0]
+        up_scale = pixelshuffle_scale(pixelshuffle_shape, num_in_ch)
 
-        res_num = get_seq_len(state_dict, "residual_layer")
-        block_num = get_seq_len(state_dict, "residual_layer.0.residual_layer") - 1
+        res_num = get_seq_len(state_dict, 'residual_layer')
+        block_num = get_seq_len(state_dict, 'residual_layer.0.residual_layer') - 1
 
-        rel_pos_bias_key = (
-            "residual_layer.0.residual_layer.0.layer.2.fn.rel_pos_bias.weight"
-        )
+        rel_pos_bias_key = 'residual_layer.0.residual_layer.0.layer.2.fn.rel_pos_bias.weight'
         if rel_pos_bias_key in state_dict:
             pe = True
             rel_pos_bias_weight = state_dict[rel_pos_bias_key].shape[0]
@@ -63,10 +59,4 @@ class OmniArch(Architecture[OmniSR]):
             bias=bias,
         )
 
-        return WrappedModel(
-            model=model,
-            in_channels=num_in_ch,
-            out_channels=num_out_ch,
-            upscale=up_scale,
-            name="OmniSR"
-        )
+        return WrappedModel(model=model, in_channels=num_in_ch, out_channels=num_out_ch, upscale=up_scale, name='OmniSR')

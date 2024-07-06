@@ -45,9 +45,9 @@ def dysample_scale(ds_size: int):
 
 
 def get_pixelshuffle_params(
-        state_dict: Mapping[str, object],
-        upsample_key: str = "upsample",
-        default_nf: int = 64,
+    state_dict: Mapping[str, object],
+    upsample_key: str = 'upsample',
+    default_nf: int = 64,
 ) -> tuple[int, int]:
     """
     This will detect the upscale factor and number of features of a pixelshuffle module in the state dict.
@@ -60,7 +60,7 @@ def get_pixelshuffle_params(
     num_feat = default_nf
 
     for i in range(0, 10, 2):
-        key = f"{upsample_key}.{i}.weight"
+        key = f'{upsample_key}.{i}.weight'
         if key not in state_dict:
             break
 

@@ -16,7 +16,6 @@ from torch.nn.init import trunc_normal_
 from resselt.archs.utils.torch_internals import to_2tuple
 
 
-
 # Shuffle operation for Categorization and UnCategorization operations.
 def index_reverse(index):
     index_r = torch.zeros_like(index)
@@ -28,9 +27,7 @@ def index_reverse(index):
 
 def feature_shuffle(x, index):
     dim = index.dim()
-    assert (
-        x.shape[:dim] == index.shape
-    ), f"x ({x.shape}) and index ({index.shape}) shape incompatible"
+    assert x.shape[:dim] == index.shape, f'x ({x.shape}) and index ({index.shape}) shape incompatible'
 
     for _ in range(x.dim() - index.dim()):
         index = index.unsqueeze(-1)
@@ -58,11 +55,7 @@ class dwconv(nn.Module):
         self.hidden_features = hidden_features
 
     def forward(self, x, x_size):
-        x = (
-            x.transpose(1, 2)
-            .view(x.shape[0], self.hidden_features, x_size[0], x_size[1])
-            .contiguous()
-        )  # b Ph*Pw c
+        x = x.transpose(1, 2).view(x.shape[0], self.hidden_features, x_size[0], x_size[1]).contiguous()  # b Ph*Pw c
         x = self.depthwise_conv(x)
         x = x.flatten(2).transpose(1, 2).contiguous()
         return x
@@ -104,9 +97,7 @@ def window_partition(x, window_size):
     """
     b, h, w, c = x.shape
     x = x.view(b, h // window_size, window_size, w // window_size, window_size, c)
-    windows = (
-        x.permute(0, 1, 3, 2, 4, 5).contiguous().view(-1, window_size, window_size, c)
-    )
+    windows = x.permute(0, 1, 3, 2, 4, 5).contiguous().view(-1, window_size, window_size, c)
     return windows
 
 
@@ -122,9 +113,7 @@ def window_reverse(windows, window_size, h, w):
         x: (b, h, w, c)
     """
     b = int(windows.shape[0] / (h * w / window_size / window_size))
-    x = windows.view(
-        b, h // window_size, w // window_size, window_size, window_size, -1
-    )
+    x = windows.view(b, h // window_size, w // window_size, window_size, window_size, -1)
     x = x.permute(0, 1, 3, 2, 4, 5).contiguous().view(b, h, w, -1)
     return x
 
@@ -168,9 +157,7 @@ class WindowAttention(nn.Module):
         """
         b_, n, c3 = qkv.shape
         c = c3 // 3
-        qkv = qkv.reshape(b_, n, 3, self.num_heads, c // self.num_heads).permute(
-            2, 0, 3, 1, 4
-        )
+        qkv = qkv.reshape(b_, n, 3, self.num_heads, c // self.num_heads).permute(2, 0, 3, 1, 4)
         q, k, v = (
             qkv[0],
             qkv[1],
@@ -185,16 +172,12 @@ class WindowAttention(nn.Module):
             self.window_size[0] * self.window_size[1],
             -1,
         )  # Wh*Ww,Wh*Ww,nH
-        relative_position_bias = relative_position_bias.permute(
-            2, 0, 1
-        ).contiguous()  # nH, Wh*Ww, Wh*Ww
+        relative_position_bias = relative_position_bias.permute(2, 0, 1).contiguous()  # nH, Wh*Ww, Wh*Ww
         attn = attn + relative_position_bias.unsqueeze(0)
 
         if mask is not None:
             nw = mask.shape[0]
-            attn = attn.view(b_ // nw, nw, self.num_heads, n, n) + mask.unsqueeze(
-                1
-            ).unsqueeze(0)
+            attn = attn.view(b_ // nw, nw, self.num_heads, n, n) + mask.unsqueeze(1).unsqueeze(0)
             attn = attn.view(-1, self.num_heads, n, n)
             attn = self.softmax(attn)
         else:
@@ -205,7 +188,7 @@ class WindowAttention(nn.Module):
         return x
 
     def extra_repr(self) -> str:
-        return f"dim={self.dim}, window_size={self.window_size}, num_heads={self.num_heads}, qkv_bias={self.qkv_bias}"
+        return f'dim={self.dim}, window_size={self.window_size}, num_heads={self.num_heads}, qkv_bias={self.qkv_bias}'
 
 
 class ATD_CA(nn.Module):
@@ -220,9 +203,7 @@ class ATD_CA(nn.Module):
         qkv_bias (bool, optional):  If True, add a learnable bias to query, key, value. Default: True
     """
 
-    def __init__(
-        self, dim, input_resolution, num_tokens=64, reducted_dim=10, qkv_bias=True
-    ):
+    def __init__(self, dim, input_resolution, num_tokens=64, reducted_dim=10, qkv_bias=True):
         super().__init__()
         self.dim = dim
         self.input_resolution = input_resolution
@@ -257,9 +238,7 @@ class ATD_CA(nn.Module):
         v = self.wv(td)
 
         # Q @ K^T
-        attn = F.normalize(q, dim=-1) @ F.normalize(k, dim=-1).transpose(
-            -2, -1
-        )  # b, n, n_tk
+        attn = F.normalize(q, dim=-1) @ F.normalize(k, dim=-1).transpose(-2, -1)  # b, n, n_tk
         scale = torch.clamp(self.scale, 0, 1)
         attn = attn * (1 + scale * np.log(self.num_tokens))
         attn = self.softmax(attn)
@@ -334,17 +313,13 @@ class AC_MSA(nn.Module):
         )
         y = paded_qkv.reshape(b, -1, gs, c3)
 
-        qkv = y.reshape(b, ng, gs, 3, self.num_heads, c // self.num_heads).permute(
-            3, 0, 1, 4, 2, 5
-        )  # 3, b, ng, nh, gs, c//nh
+        qkv = y.reshape(b, ng, gs, 3, self.num_heads, c // self.num_heads).permute(3, 0, 1, 4, 2, 5)  # 3, b, ng, nh, gs, c//nh
         q, k, v = qkv[0], qkv[1], qkv[2]
 
         # Q @ K^T
         attn = q @ k.transpose(-2, -1)  # b, ng, nh, gs, gs
 
-        logit_scale = torch.clamp(
-            self.logit_scale, max=torch.log(torch.tensor(1.0 / 0.01)).to(qkv.device)
-        ).exp()
+        logit_scale = torch.clamp(self.logit_scale, max=torch.log(torch.tensor(1.0 / 0.01)).to(qkv.device)).exp()
         attn = attn * logit_scale
 
         # softmax
@@ -463,9 +438,7 @@ class ATDTransformerLayer(nn.Module):
         qkv = self.wqkv(x)
 
         # ATD_CA
-        x_atd, sim_atd = self.attn_atd(
-            x, td, x_size
-        )  # x_atd: (b, n, c)  sim_atd: (b, n,)
+        x_atd, sim_atd = self.attn_atd(x, td, x_size)  # x_atd: (b, n, c)  sim_atd: (b, n,)
 
         # AC_MSA
         x_aca = self.attn_aca(qkv, sim_atd, x_size)
@@ -475,24 +448,18 @@ class ATDTransformerLayer(nn.Module):
 
         # cyclic shift
         if self.shift_size > 0:
-            shifted_qkv = torch.roll(
-                qkv, shifts=(-self.shift_size, -self.shift_size), dims=(1, 2)
-            )
-            attn_mask = params["attn_mask"]
+            shifted_qkv = torch.roll(qkv, shifts=(-self.shift_size, -self.shift_size), dims=(1, 2))
+            attn_mask = params['attn_mask']
         else:
             shifted_qkv = qkv
             attn_mask = None
 
         # partition windows
-        x_windows = window_partition(
-            shifted_qkv, self.window_size
-        )  # nw*b, window_size, window_size, c
-        x_windows = x_windows.view(
-            -1, self.window_size * self.window_size, c3
-        )  # nw*b, window_size*window_size, c
+        x_windows = window_partition(shifted_qkv, self.window_size)  # nw*b, window_size, window_size, c
+        x_windows = x_windows.view(-1, self.window_size * self.window_size, c3)  # nw*b, window_size*window_size, c
 
         # W-MSA/SW-MSA (to be compatible for testing on images whose shapes are the multiple of window size
-        attn_windows = self.attn_win(x_windows, rpi=params["rpi_sa"], mask=attn_mask)
+        attn_windows = self.attn_win(x_windows, rpi=params['rpi_sa'], mask=attn_mask)
 
         # merge windows
         attn_windows = attn_windows.view(-1, self.window_size, self.window_size, c)
@@ -500,9 +467,7 @@ class ATDTransformerLayer(nn.Module):
 
         # reverse cyclic shift
         if self.shift_size > 0:
-            attn_x = torch.roll(
-                shifted_x, shifts=(self.shift_size, self.shift_size), dims=(1, 2)
-            )
+            attn_x = torch.roll(shifted_x, shifts=(self.shift_size, self.shift_size), dims=(1, 2))
         else:
             attn_x = shifted_x
         x_win = attn_x
@@ -519,7 +484,7 @@ class ATDTransformerLayer(nn.Module):
             mask_soft = self.softmax(self.norm3(sim_atd.transpose(-1, -2)))
             mask_x = x.reshape(b, N, c)
             s = self.sigmoid(self.sigma)
-            td = s * td + (1 - s) * torch.einsum("btn,bnc->btc", mask_soft, mask_x)
+            td = s * td + (1 - s) * torch.einsum('btn,bnc->btc', mask_soft, mask_x)
 
         return x, td
 
@@ -546,8 +511,8 @@ class PatchMerging(nn.Module):
         """
         h, w = self.input_resolution
         b, seq_len, c = x.shape
-        assert seq_len == h * w, "input feature has wrong size"
-        assert h % 2 == 0 and w % 2 == 0, f"x size ({h}*{w}) are not even."
+        assert seq_len == h * w, 'input feature has wrong size'
+        assert h % 2 == 0 and w % 2 == 0, f'x size ({h}*{w}) are not even.'
 
         x = x.view(b, h, w, c)
 
@@ -564,7 +529,7 @@ class PatchMerging(nn.Module):
         return x
 
     def extra_repr(self) -> str:
-        return f"input_resolution={self.input_resolution}, dim={self.dim}"
+        return f'input_resolution={self.input_resolution}, dim={self.dim}'
 
 
 class BasicBlock(nn.Module):
@@ -634,9 +599,7 @@ class BasicBlock(nn.Module):
 
         # patch merging layer
         if downsample is not None:
-            self.downsample = downsample(
-                input_resolution, dim=dim, norm_layer=norm_layer
-            )
+            self.downsample = downsample(input_resolution, dim=dim, norm_layer=norm_layer)
         else:
             self.downsample = None
 
@@ -653,7 +616,7 @@ class BasicBlock(nn.Module):
         return x
 
     def extra_repr(self) -> str:
-        return f"dim={self.dim}, input_resolution={self.input_resolution}, depth={self.depth}"
+        return f'dim={self.dim}, input_resolution={self.input_resolution}, depth={self.depth}'
 
 
 class ATDB(nn.Module):
@@ -693,7 +656,7 @@ class ATDB(nn.Module):
         downsample=None,
         img_size=224,
         patch_size=4,
-        resi_connection="1conv",
+        resi_connection='1conv',
     ):
         super().__init__()
 
@@ -733,9 +696,9 @@ class ATDB(nn.Module):
             downsample=downsample,
         )
 
-        if resi_connection == "1conv":
+        if resi_connection == '1conv':
             self.conv = nn.Conv2d(dim, dim, 3, 1, 1)
-        elif resi_connection == "3conv":
+        elif resi_connection == '3conv':
             # to save parameters and memory
             self.conv = nn.Sequential(
                 nn.Conv2d(dim, dim // 4, 3, 1, 1),
@@ -746,14 +709,7 @@ class ATDB(nn.Module):
             )
 
     def forward(self, x, x_size, params):
-        return (
-            self.patch_embed(
-                self.conv(
-                    self.patch_unembed(self.residual_group(x, x_size, params), x_size)
-                )
-            )
-            + x
-        )
+        return self.patch_embed(self.conv(self.patch_unembed(self.residual_group(x, x_size, params), x_size))) + x
 
 
 class PatchEmbed(nn.Module):
@@ -767,9 +723,7 @@ class PatchEmbed(nn.Module):
         norm_layer (nn.Module, optional): Normalization layer. Default: None
     """
 
-    def __init__(
-        self, img_size=224, patch_size=4, in_chans=3, embed_dim=96, norm_layer=None
-    ):
+    def __init__(self, img_size=224, patch_size=4, in_chans=3, embed_dim=96, norm_layer=None):
         super().__init__()
         img_size = to_2tuple(img_size)
         patch_size = to_2tuple(patch_size)
@@ -808,9 +762,7 @@ class PatchUnEmbed(nn.Module):
         norm_layer (nn.Module, optional): Normalization layer. Default: None
     """
 
-    def __init__(
-        self, img_size=224, patch_size=4, in_chans=3, embed_dim=96, norm_layer=None
-    ):
+    def __init__(self, img_size=224, patch_size=4, in_chans=3, embed_dim=96, norm_layer=None):
         super().__init__()
         img_size = to_2tuple(img_size)
         patch_size = to_2tuple(patch_size)
@@ -827,9 +779,7 @@ class PatchUnEmbed(nn.Module):
         self.embed_dim = embed_dim
 
     def forward(self, x, x_size):
-        x = x.transpose(1, 2).view(
-            x.shape[0], self.embed_dim, x_size[0], x_size[1]
-        )  # b Ph*Pw c
+        x = x.transpose(1, 2).view(x.shape[0], self.embed_dim, x_size[0], x_size[1])  # b Ph*Pw c
         return x
 
 
@@ -853,9 +803,7 @@ class Upsample(nn.Sequential):
             m.append(nn.Conv2d(num_feat, 9 * num_feat, 3, 1, 1))
             m.append(nn.PixelShuffle(3))
         else:
-            raise ValueError(
-                f"scale {scale} is not supported. Supported scales: 2^n and 3."
-            )
+            raise ValueError(f'scale {scale} is not supported. Supported scales: 2^n and 3.')
         super().__init__(*m)
 
 
@@ -876,7 +824,6 @@ class UpsampleOneStep(nn.Sequential):
         m.append(nn.Conv2d(num_feat, (scale**2) * num_out_ch, 3, 1, 1))
         m.append(nn.PixelShuffle(scale))
         super().__init__(*m)
-
 
 
 class ATD(nn.Module):
@@ -927,8 +874,8 @@ class ATD(nn.Module):
         patch_norm=True,
         upscale=1,
         img_range=1.0,
-        upsampler="",
-        resi_connection="1conv",
+        upsampler='',
+        resi_connection='1conv',
         norm=True,
     ):
         super().__init__()
@@ -939,7 +886,7 @@ class ATD(nn.Module):
 
         self.no_norm: torch.Tensor | None
         if not norm:
-            self.register_buffer("no_norm", torch.zeros(1))
+            self.register_buffer('no_norm', torch.zeros(1))
         else:
             self.no_norm = None
 
@@ -993,7 +940,7 @@ class ATD(nn.Module):
 
         # relative position index
         relative_position_index_SA = self.calculate_rpi_sa()
-        self.register_buffer("relative_position_index_SA", relative_position_index_SA)
+        self.register_buffer('relative_position_index_SA', relative_position_index_SA)
 
         # build Residual Adaptive Token Dictionary Blocks (ATDB)
         self.layers = nn.ModuleList()
@@ -1021,9 +968,9 @@ class ATD(nn.Module):
         self.norm = norm_layer(self.num_features)
 
         # build the last conv layer in deep feature extraction
-        if resi_connection == "1conv":
+        if resi_connection == '1conv':
             self.conv_after_body = nn.Conv2d(embed_dim, embed_dim, 3, 1, 1)
-        elif resi_connection == "3conv":
+        elif resi_connection == '3conv':
             # to save parameters and memory
             self.conv_after_body = nn.Sequential(
                 nn.Conv2d(embed_dim, embed_dim // 4, 3, 1, 1),
@@ -1034,14 +981,12 @@ class ATD(nn.Module):
             )
 
         # ------------------------- 3, high quality image reconstruction ------------------------- #
-        if self.upsampler == "pixelshuffle":
+        if self.upsampler == 'pixelshuffle':
             # for classical SR
-            self.conv_before_upsample = nn.Sequential(
-                nn.Conv2d(embed_dim, num_feat, 3, 1, 1), nn.LeakyReLU(inplace=True)
-            )
+            self.conv_before_upsample = nn.Sequential(nn.Conv2d(embed_dim, num_feat, 3, 1, 1), nn.LeakyReLU(inplace=True))
             self.upsample = Upsample(upscale, num_feat)
             self.conv_last = nn.Conv2d(num_feat, num_out_ch, 3, 1, 1)
-        elif self.upsampler == "pixelshuffledirect":
+        elif self.upsampler == 'pixelshuffledirect':
             # for lightweight SR (to save parameters)
             self.upsample = UpsampleOneStep(
                 upscale,
@@ -1049,12 +994,10 @@ class ATD(nn.Module):
                 num_out_ch,
                 (patches_resolution[0], patches_resolution[1]),
             )
-        elif self.upsampler == "nearest+conv":
+        elif self.upsampler == 'nearest+conv':
             # for real-world SR (less artifacts)
-            assert self.upscale == 4, "only support x4 now."
-            self.conv_before_upsample = nn.Sequential(
-                nn.Conv2d(embed_dim, num_feat, 3, 1, 1), nn.LeakyReLU(inplace=True)
-            )
+            assert self.upscale == 4, 'only support x4 now.'
+            self.conv_before_upsample = nn.Sequential(nn.Conv2d(embed_dim, num_feat, 3, 1, 1), nn.LeakyReLU(inplace=True))
             self.conv_up1 = nn.Conv2d(num_feat, num_feat, 3, 1, 1)
             self.conv_up2 = nn.Conv2d(num_feat, num_feat, 3, 1, 1)
             self.conv_hr = nn.Conv2d(num_feat, num_feat, 3, 1, 1)
@@ -1077,11 +1020,11 @@ class ATD(nn.Module):
 
     @torch.jit.ignore  # type: ignore
     def no_weight_decay(self):
-        return {"absolute_pos_embed"}
+        return {'absolute_pos_embed'}
 
     @torch.jit.ignore  # type: ignore
     def no_weight_decay_keywords(self):
-        return {"relative_position_bias_table"}
+        return {'relative_position_bias_table'}
 
     def forward_features(self, x, params):
         x_size = (x.shape[2], x.shape[3])
@@ -1103,12 +1046,8 @@ class ATD(nn.Module):
         coords_w = torch.arange(self.window_size)
         coords = torch.stack(torch.meshgrid([coords_h, coords_w]))  # 2, Wh, Ww
         coords_flatten = torch.flatten(coords, 1)  # 2, Wh*Ww
-        relative_coords = (
-            coords_flatten[:, :, None] - coords_flatten[:, None, :]
-        )  # 2, Wh*Ww, Wh*Ww
-        relative_coords = relative_coords.permute(
-            1, 2, 0
-        ).contiguous()  # Wh*Ww, Wh*Ww, 2
+        relative_coords = coords_flatten[:, :, None] - coords_flatten[:, None, :]  # 2, Wh*Ww, Wh*Ww
+        relative_coords = relative_coords.permute(1, 2, 0).contiguous()  # Wh*Ww, Wh*Ww, 2
         relative_coords[:, :, 0] += self.window_size - 1  # shift to start from 0
         relative_coords[:, :, 1] += self.window_size - 1
         relative_coords[:, :, 0] *= 2 * self.window_size - 1
@@ -1135,14 +1074,10 @@ class ATD(nn.Module):
                 img_mask[:, h, w, :] = cnt
                 cnt += 1
 
-        mask_windows = window_partition(
-            img_mask, self.window_size
-        )  # nw, window_size, window_size, 1
+        mask_windows = window_partition(img_mask, self.window_size)  # nw, window_size, window_size, 1
         mask_windows = mask_windows.view(-1, self.window_size * self.window_size)
         attn_mask = mask_windows.unsqueeze(1) - mask_windows.unsqueeze(2)
-        attn_mask = attn_mask.masked_fill(attn_mask != 0, -100.0).masked_fill(
-            attn_mask == 0, 0.0
-        )
+        attn_mask = attn_mask.masked_fill(attn_mask != 0, -100.0).masked_fill(attn_mask == 0, 0.0)
 
         return attn_mask
 
@@ -1166,30 +1101,26 @@ class ATD(nn.Module):
             x = (x - self.mean) * self.img_range
 
         attn_mask = self.calculate_mask([h, w]).to(x.device)
-        params = {"attn_mask": attn_mask, "rpi_sa": self.relative_position_index_SA}
+        params = {'attn_mask': attn_mask, 'rpi_sa': self.relative_position_index_SA}
 
-        if self.upsampler == "pixelshuffle":
+        if self.upsampler == 'pixelshuffle':
             # for classical SR
             x = self.conv_first(x)
             x = self.conv_after_body(self.forward_features(x, params)) + x
             x = self.conv_before_upsample(x)
             x = self.conv_last(self.upsample(x))
-        elif self.upsampler == "pixelshuffledirect":
+        elif self.upsampler == 'pixelshuffledirect':
             # for lightweight SR
             x = self.conv_first(x)
             x = self.conv_after_body(self.forward_features(x, params)) + x
             x = self.upsample(x)
-        elif self.upsampler == "nearest+conv":
+        elif self.upsampler == 'nearest+conv':
             # for real-world SR
             x = self.conv_first(x)
             x = self.conv_after_body(self.forward_features(x, params)) + x
             x = self.conv_before_upsample(x)
-            x = self.lrelu(
-                self.conv_up1(F.interpolate(x, scale_factor=2, mode="nearest"))
-            )
-            x = self.lrelu(
-                self.conv_up2(F.interpolate(x, scale_factor=2, mode="nearest"))
-            )
+            x = self.lrelu(self.conv_up1(F.interpolate(x, scale_factor=2, mode='nearest')))
+            x = self.lrelu(self.conv_up2(F.interpolate(x, scale_factor=2, mode='nearest')))
             x = self.conv_last(self.lrelu(self.conv_hr(x)))
         else:
             # for image denoising and JPEG compression artifact reduction

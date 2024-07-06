@@ -39,9 +39,7 @@ class ESA(nn.Module):
         c1 = self.conv2(c1_)
         v_max = F.max_pool2d(c1, kernel_size=7, stride=3)
         c3 = self.conv3(v_max)
-        c3 = F.interpolate(
-            c3, (x.size(2), x.size(3)), mode="bilinear", align_corners=False
-        )
+        c3 = F.interpolate(c3, (x.size(2), x.size(3)), mode='bilinear', align_corners=False)
         cf = self.conv_f(c1_)
         c4 = self.conv4(c3 + cf)
         m = self.sigmoid(c4)
@@ -49,9 +47,7 @@ class ESA(nn.Module):
 
 
 class LK_ESA(nn.Module):
-    def __init__(
-            self, esa_channels, n_feats, conv=nn.Conv2d, kernel_expand=1, bias=True
-    ):
+    def __init__(self, esa_channels, n_feats, conv=nn.Conv2d, kernel_expand=1, bias=True):
         super().__init__()
         f = esa_channels
         self.conv1 = conv(n_feats, f, kernel_size=1)
@@ -112,9 +108,7 @@ class LK_ESA(nn.Module):
 
 
 class LK_ESA_LN(nn.Module):
-    def __init__(
-            self, esa_channels, n_feats, conv=nn.Conv2d, kernel_expand=1, bias=True
-    ):
+    def __init__(self, esa_channels, n_feats, conv=nn.Conv2d, kernel_expand=1, bias=True):
         super().__init__()
         f = esa_channels
         self.conv1 = conv(n_feats, f, kernel_size=1)
@@ -178,9 +172,7 @@ class LK_ESA_LN(nn.Module):
 
 
 class AdaGuidedFilter(nn.Module):
-    def __init__(
-            self, esa_channels, n_feats, conv=nn.Conv2d, kernel_expand=1, bias=True
-    ):
+    def __init__(self, esa_channels, n_feats, conv=nn.Conv2d, kernel_expand=1, bias=True):
         super().__init__()
 
         self.gap = nn.AdaptiveAvgPool2d(1)
@@ -199,18 +191,14 @@ class AdaGuidedFilter(nn.Module):
     def box_filter(self, x, r):
         channel = x.shape[1]
         kernel_size = 2 * r + 1
-        weight = 1.0 / (kernel_size ** 2)
-        box_kernel = weight * torch.ones(
-            (channel, 1, kernel_size, kernel_size), dtype=torch.float32, device=x.device
-        )
+        weight = 1.0 / (kernel_size**2)
+        box_kernel = weight * torch.ones((channel, 1, kernel_size, kernel_size), dtype=torch.float32, device=x.device)
         output = F.conv2d(x, weight=box_kernel, stride=1, padding=r, groups=channel)
         return output
 
     def forward(self, x):
         _, _, H, W = x.shape
-        N = self.box_filter(
-            torch.ones((1, 1, H, W), dtype=x.dtype, device=x.device), self.r
-        )
+        N = self.box_filter(torch.ones((1, 1, H, W), dtype=x.dtype, device=x.device), self.r)
 
         # epsilon = self.fc(self.gap(x))
         # epsilon = torch.pow(epsilon, 2)
@@ -230,9 +218,7 @@ class AdaGuidedFilter(nn.Module):
 
 
 class AdaConvGuidedFilter(nn.Module):
-    def __init__(
-            self, esa_channels, n_feats, conv=nn.Conv2d, kernel_expand=1, bias=True
-    ):
+    def __init__(self, esa_channels, n_feats, conv=nn.Conv2d, kernel_expand=1, bias=True):
         super().__init__()
         f = esa_channels
 
@@ -285,15 +271,13 @@ class AdaConvGuidedFilter(nn.Module):
         return x * m
 
 
-def pixelshuffle_block(
-        in_channels, out_channels, upscale_factor=2, kernel_size=3, bias=False
-):
+def pixelshuffle_block(in_channels, out_channels, upscale_factor=2, kernel_size=3, bias=False):
     """
     Upsample features according to `upscale_factor`.
     """
     conv = nn.Conv2d(
         in_channels,
-        out_channels * (upscale_factor ** 2),
+        out_channels * (upscale_factor**2),
         kernel_size,
         padding=1,
         bias=bias,
@@ -336,8 +320,8 @@ class LayerNormFunction(torch.autograd.Function):
 class LayerNorm2d(nn.Module):
     def __init__(self, channels, eps=1e-6):
         super().__init__()
-        self.register_parameter("weight", nn.Parameter(torch.ones(channels)))
-        self.register_parameter("bias", nn.Parameter(torch.zeros(channels)))
+        self.register_parameter('weight', nn.Parameter(torch.ones(channels)))
+        self.register_parameter('bias', nn.Parameter(torch.zeros(channels)))
         self.eps = eps
 
     def forward(self, x):
@@ -465,12 +449,12 @@ class SqueezeExcitation(nn.Module):
         hidden_dim = int(dim * shrinkage_rate)
 
         self.gate = nn.Sequential(
-            Reduce("b c h w -> b c", "mean"),
+            Reduce('b c h w -> b c', 'mean'),
             nn.Linear(dim, hidden_dim, bias=False),
             nn.SiLU(),
             nn.Linear(hidden_dim, dim, bias=False),
             nn.Sigmoid(),
-            Rearrange("b c -> b c 1 1"),
+            Rearrange('b c -> b c 1 1'),
         )
 
     def forward(self, x):
@@ -500,16 +484,11 @@ class Dropsample(nn.Module):
         if self.prob == 0.0 or (not self.training):
             return x
 
-        keep_mask = (
-                torch.FloatTensor((x.shape[0], 1, 1, 1), device=device).uniform_()
-                > self.prob
-        )
+        keep_mask = torch.FloatTensor((x.shape[0], 1, 1, 1), device=device).uniform_() > self.prob
         return x * keep_mask / (1 - self.prob)
 
 
-def MBConv(
-        dim_in, dim_out, *, downsample, expansion_rate=4, shrinkage_rate=0.25, dropout=0.0
-):
+def MBConv(dim_in, dim_out, *, downsample, expansion_rate=4, shrinkage_rate=0.25, dropout=0.0):
     hidden_dim = int(expansion_rate * dim_out)
     stride = 2 if downsample else 1
 
@@ -517,9 +496,7 @@ def MBConv(
         nn.Conv2d(dim_in, hidden_dim, 1),
         # nn.BatchNorm2d(hidden_dim),
         nn.GELU(),
-        nn.Conv2d(
-            hidden_dim, hidden_dim, 3, stride=stride, padding=1, groups=hidden_dim
-        ),
+        nn.Conv2d(hidden_dim, hidden_dim, 3, stride=stride, padding=1, groups=hidden_dim),
         # nn.BatchNorm2d(hidden_dim),
         nn.GELU(),
         SqueezeExcitation(hidden_dim, shrinkage_rate=shrinkage_rate),
@@ -536,29 +513,25 @@ def MBConv(
 # attention related classes
 class Attention(nn.Module):
     def __init__(
-            self,
-            dim,
-            dim_head=32,
-            dropout=0.0,
-            window_size=7,
-            with_pe=True,
+        self,
+        dim,
+        dim_head=32,
+        dropout=0.0,
+        window_size=7,
+        with_pe=True,
     ):
         super().__init__()
-        assert (
-                       dim % dim_head
-               ) == 0, "dimension should be divisible by dimension per head"
+        assert (dim % dim_head) == 0, 'dimension should be divisible by dimension per head'
 
         self.heads = dim // dim_head
-        self.scale = dim_head ** -0.5
+        self.scale = dim_head**-0.5
         self.with_pe = with_pe
 
         self.to_qkv = nn.Linear(dim, dim * 3, bias=False)
 
         self.attend = nn.Sequential(nn.Softmax(dim=-1), nn.Dropout(dropout))
 
-        self.to_out = nn.Sequential(
-            nn.Linear(dim, dim, bias=False), nn.Dropout(dropout)
-        )
+        self.to_out = nn.Sequential(nn.Linear(dim, dim, bias=False), nn.Dropout(dropout))
 
         # relative positional bias
         if self.with_pe:
@@ -566,16 +539,12 @@ class Attention(nn.Module):
 
             pos = torch.arange(window_size)
             grid = torch.stack(torch.meshgrid(pos, pos))
-            grid = rearrange(grid, "c i j -> (i j) c")
-            rel_pos = rearrange(grid, "i ... -> i 1 ...") - rearrange(
-                grid, "j ... -> 1 j ..."
-            )
+            grid = rearrange(grid, 'c i j -> (i j) c')
+            rel_pos = rearrange(grid, 'i ... -> i 1 ...') - rearrange(grid, 'j ... -> 1 j ...')
             rel_pos += window_size - 1
-            rel_pos_indices = (rel_pos * torch.tensor([2 * window_size - 1, 1])).sum(
-                dim=-1
-            )
+            rel_pos_indices = (rel_pos * torch.tensor([2 * window_size - 1, 1])).sum(dim=-1)
 
-            self.register_buffer("rel_pos_indices", rel_pos_indices, persistent=False)
+            self.register_buffer('rel_pos_indices', rel_pos_indices, persistent=False)
 
     def forward(self, x):
         batch, height, width, window_height, window_width, _, device, h = (  # noqa: F841
@@ -586,7 +555,7 @@ class Attention(nn.Module):
 
         # flatten
 
-        x = rearrange(x, "b x y w1 w2 d -> (b x y) (w1 w2) d")
+        x = rearrange(x, 'b x y w1 w2 d -> (b x y) (w1 w2) d')
 
         # project for queries, keys, values
 
@@ -594,7 +563,7 @@ class Attention(nn.Module):
 
         # split heads
 
-        q, k, v = (rearrange(t, "b n (h d ) -> b h n d", h=h) for t in (q, k, v))
+        q, k, v = (rearrange(t, 'b n (h d ) -> b h n d', h=h) for t in (q, k, v))
 
         # scale
 
@@ -602,12 +571,12 @@ class Attention(nn.Module):
 
         # sim
 
-        sim = einsum("b h i d, b h j d -> b h i j", q, k)
+        sim = einsum('b h i d, b h j d -> b h i j', q, k)
 
         # add positional bias
         if self.with_pe:
             bias = self.rel_pos_bias(self.rel_pos_indices)
-            sim = sim + rearrange(bias, "i j h -> h i j")
+            sim = sim + rearrange(bias, 'i j h -> h i j')
 
         # attention
 
@@ -615,38 +584,34 @@ class Attention(nn.Module):
 
         # aggregate
 
-        out = einsum("b h i j, b h j d -> b h i d", attn, v)
+        out = einsum('b h i j, b h j d -> b h i d', attn, v)
 
         # merge heads
 
-        out = rearrange(
-            out, "b h (w1 w2) d -> b w1 w2 (h d)", w1=window_height, w2=window_width
-        )
+        out = rearrange(out, 'b h (w1 w2) d -> b w1 w2 (h d)', w1=window_height, w2=window_width)
 
         # combine heads out
 
         out = self.to_out(out)
-        return rearrange(out, "(b x y) ... -> b x y ...", x=height, y=width)
+        return rearrange(out, '(b x y) ... -> b x y ...', x=height, y=width)
 
 
 class Block_Attention(nn.Module):
     def __init__(
-            self,
-            dim,
-            dim_head=32,
-            bias=False,
-            dropout=0.0,
-            window_size=7,
-            with_pe=True,
+        self,
+        dim,
+        dim_head=32,
+        bias=False,
+        dropout=0.0,
+        window_size=7,
+        with_pe=True,
     ):
         super().__init__()
-        assert (
-                       dim % dim_head
-               ) == 0, "dimension should be divisible by dimension per head"
+        assert (dim % dim_head) == 0, 'dimension should be divisible by dimension per head'
 
         self.heads = dim // dim_head
         self.ps = window_size
-        self.scale = dim_head ** -0.5
+        self.scale = dim_head**-0.5
         self.with_pe = with_pe
 
         self.qkv = nn.Conv2d(dim, dim * 3, kernel_size=1, bias=bias)
@@ -676,7 +641,7 @@ class Block_Attention(nn.Module):
         q, k, v = (
             rearrange(
                 t,
-                "b (h d) (x w1) (y w2) -> (b x y) h (w1 w2) d",
+                'b (h d) (x w1) (y w2) -> (b x y) h (w1 w2) d',
                 h=self.heads,
                 w1=self.ps,
                 w2=self.ps,
@@ -690,19 +655,19 @@ class Block_Attention(nn.Module):
 
         # sim
 
-        sim = einsum("b h i d, b h j d -> b h i j", q, k)
+        sim = einsum('b h i d, b h j d -> b h i j', q, k)
 
         # attention
         attn = self.attend(sim)
 
         # aggregate
 
-        out = einsum("b h i j, b h j d -> b h i d", attn, v)
+        out = einsum('b h i j, b h j d -> b h i d', attn, v)
 
         # merge heads
         out = rearrange(
             out,
-            "(b x y) head (w1 w2) d -> b (head d) (x w1) (y w2)",
+            '(b x y) head (w1 w2) d -> b (head d) (x w1) (y w2)',
             x=h // self.ps,
             y=w // self.ps,
             head=self.heads,
@@ -744,7 +709,7 @@ class Channel_Attention(nn.Module):
         q, k, v = (
             rearrange(
                 t,
-                "b (head d) (h ph) (w pw) -> b (h w) head d (ph pw)",
+                'b (head d) (h ph) (w pw) -> b (h w) head d (ph pw)',
                 ph=self.ps,
                 pw=self.ps,
                 head=self.heads,
@@ -761,7 +726,7 @@ class Channel_Attention(nn.Module):
 
         out = rearrange(
             out,
-            "b (h w) head d (ph pw) -> b (head d) (h ph) (w pw)",
+            'b (h w) head d (ph pw) -> b (head d) (h ph) (w pw)',
             h=h // self.ps,
             w=w // self.ps,
             ph=self.ps,
@@ -804,7 +769,7 @@ class Channel_Attention_grid(nn.Module):
         q, k, v = (
             rearrange(
                 t,
-                "b (head d) (h ph) (w pw) -> b (ph pw) head d (h w)",
+                'b (head d) (h ph) (w pw) -> b (ph pw) head d (h w)',
                 ph=self.ps,
                 pw=self.ps,
                 head=self.heads,
@@ -821,7 +786,7 @@ class Channel_Attention_grid(nn.Module):
 
         out = rearrange(
             out,
-            "b (ph pw) head d (h w) -> b (head d) (h ph) (w pw)",
+            'b (ph pw) head d (h w) -> b (head d) (h ph) (w pw)',
             h=h // self.ps,
             w=w // self.ps,
             ph=self.ps,
@@ -836,11 +801,11 @@ class Channel_Attention_grid(nn.Module):
 
 class OSA_Block(nn.Module):
     def __init__(
-            self,
-            channel_num=64,
-            window_size=8,
-            with_pe=False,
-            dropout=0.0,
+        self,
+        channel_num=64,
+        window_size=8,
+        with_pe=False,
+        dropout=0.0,
     ):
         super().__init__()
 
@@ -854,9 +819,7 @@ class OSA_Block(nn.Module):
                 expansion_rate=1,
                 shrinkage_rate=0.25,
             ),
-            Rearrange(
-                "b d (x w1) (y w2) -> b x y w1 w2 d", w1=w, w2=w
-            ),  # block-like attention
+            Rearrange('b d (x w1) (y w2) -> b x y w1 w2 d', w1=w, w2=w),  # block-like attention
             PreNormResidual(
                 channel_num,
                 Attention(
@@ -867,23 +830,15 @@ class OSA_Block(nn.Module):
                     with_pe=with_pe,
                 ),
             ),
-            Rearrange("b x y w1 w2 d -> b d (x w1) (y w2)"),
-            Conv_PreNormResidual(
-                channel_num, Gated_Conv_FeedForward(dim=channel_num, dropout=dropout)
-            ),
+            Rearrange('b x y w1 w2 d -> b d (x w1) (y w2)'),
+            Conv_PreNormResidual(channel_num, Gated_Conv_FeedForward(dim=channel_num, dropout=dropout)),
             # channel-like attention
             Conv_PreNormResidual(
                 channel_num,
-                Channel_Attention(
-                    dim=channel_num, heads=4, dropout=dropout, window_size=window_size
-                ),
+                Channel_Attention(dim=channel_num, heads=4, dropout=dropout, window_size=window_size),
             ),
-            Conv_PreNormResidual(
-                channel_num, Gated_Conv_FeedForward(dim=channel_num, dropout=dropout)
-            ),
-            Rearrange(
-                "b d (w1 x) (w2 y) -> b x y w1 w2 d", w1=w, w2=w
-            ),  # grid-like attention
+            Conv_PreNormResidual(channel_num, Gated_Conv_FeedForward(dim=channel_num, dropout=dropout)),
+            Rearrange('b d (w1 x) (w2 y) -> b x y w1 w2 d', w1=w, w2=w),  # grid-like attention
             PreNormResidual(
                 channel_num,
                 Attention(
@@ -894,20 +849,14 @@ class OSA_Block(nn.Module):
                     with_pe=with_pe,
                 ),
             ),
-            Rearrange("b x y w1 w2 d -> b d (w1 x) (w2 y)"),
-            Conv_PreNormResidual(
-                channel_num, Gated_Conv_FeedForward(dim=channel_num, dropout=dropout)
-            ),
+            Rearrange('b x y w1 w2 d -> b d (w1 x) (w2 y)'),
+            Conv_PreNormResidual(channel_num, Gated_Conv_FeedForward(dim=channel_num, dropout=dropout)),
             # channel-like attention
             Conv_PreNormResidual(
                 channel_num,
-                Channel_Attention_grid(
-                    dim=channel_num, heads=4, dropout=dropout, window_size=window_size
-                ),
+                Channel_Attention_grid(dim=channel_num, heads=4, dropout=dropout, window_size=window_size),
             ),
-            Conv_PreNormResidual(
-                channel_num, Gated_Conv_FeedForward(dim=channel_num, dropout=dropout)
-            ),
+            Conv_PreNormResidual(channel_num, Gated_Conv_FeedForward(dim=channel_num, dropout=dropout)),
         )
 
     def forward(self, x):
@@ -917,12 +866,12 @@ class OSA_Block(nn.Module):
 
 class OSAG(nn.Module):
     def __init__(
-            self,
-            channel_num=64,
-            bias=True,
-            block_num=4,
-            window_size=0,
-            pe=False,
+        self,
+        channel_num=64,
+        bias=True,
+        block_num=4,
+        window_size=0,
+        pe=False,
     ):
         super().__init__()
 
@@ -959,17 +908,17 @@ class OmniSR(nn.Module):
     hyperparameters = {}
 
     def __init__(
-            self,
-            *,
-            num_in_ch=3,
-            num_out_ch=3,
-            num_feat=64,
-            block_num=1,
-            pe=True,
-            window_size=8,
-            res_num=1,
-            up_scale=4,
-            bias=True,
+        self,
+        *,
+        num_in_ch=3,
+        num_out_ch=3,
+        num_feat=64,
+        block_num=1,
+        pe=True,
+        window_size=8,
+        res_num=1,
+        up_scale=4,
+        bias=True,
     ):
         super().__init__()
 
@@ -1008,7 +957,7 @@ class OmniSR(nn.Module):
         self.up = pixelshuffle_block(num_feat, num_out_ch, up_scale, bias=bias)
 
     def check_image_size(self, x):
-        return pad_to_multiple(x, self.window_size, mode="constant")
+        return pad_to_multiple(x, self.window_size, mode='constant')
 
     def forward(self, x):
         H, W = x.shape[2:]
