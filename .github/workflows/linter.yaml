@@ -19,7 +19,7 @@ jobs:
       - name: Run Ruff
         run: |
           ruff check --fix --output-format=github .
-          ruff format --output-format=github .
+          ruff format .
       - name: Check for modified files
         id: git-check
         run: echo "modified=$(if git diff-index --quiet HEAD --; then echo "false"; else echo "true"; fi)" >> $GITHUB_OUTPUT
