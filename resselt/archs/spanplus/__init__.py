@@ -45,4 +45,5 @@ class SpanPlusArch(Architecture[SpanPlus]):
             in_channels=num_in_ch,
             out_channels=num_out_ch,
             upscale=upscale,
+            name="SPANPlus"
         )
