@@ -37,11 +37,11 @@ def canonicalize_state_dict(state_dict: Mapping[str, object]) -> Mapping[str, ob
 
 
 def pixelshuffle_scale(ps_size: int, channels: int):
-    return int(math.sqrt(ps_size / channels))
+    return math.isqrt(ps_size // channels)
 
 
 def dysample_scale(ds_size: int):
-    return int(math.sqrt(ds_size / 8))
+    return math.isqrt(ds_size // 8)
 
 
 def get_seq_len(state_dict: Mapping[str, object], seq_key: str) -> int:
