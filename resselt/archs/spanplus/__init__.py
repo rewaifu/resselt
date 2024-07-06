@@ -1,7 +1,7 @@
 from typing import Mapping
 
 from .arch import SpanPlus
-from resselt.utils import get_seq_len
+from resselt.utils import get_seq_len, dysample_scale, pixelshuffle_scale
 from resselt.registry import KeyCondition, WrappedModel, Architecture
 
 
@@ -25,13 +25,11 @@ class SpanPlusArch(Architecture[SpanPlus]):
         if "upsampler.0.weight" in state_dict.keys():
             upsampler = "ps"
             num_out_ch = num_in_ch
-            upscale = int(
-                (state_dict["upsampler.0.weight"].shape[0] / num_in_ch) ** 0.5
-            )
+            upscale = pixelshuffle_scale(state_dict["upsampler.0.weight"].shape[0], num_out_ch)
         else:
             upsampler = "dys"
             num_out_ch = state_dict["upsampler.end_conv.weight"].shape[0]
-            upscale = int((state_dict["upsampler.offset.weight"].shape[0] // 8) ** 0.5)
+            upscale = dysample_scale(state_dict["upsampler.offset.weight"].shape[0])
 
         model = SpanPlus(
             num_in_ch=num_in_ch,
