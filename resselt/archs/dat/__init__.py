@@ -6,7 +6,7 @@ from resselt.utils import get_seq_len
 from resselt.registry import KeyCondition, WrappedModel, Architecture
 
 
-class SpanPlusArch(Architecture[DAT]):
+class DatArch(Architecture[DAT]):
     def __init__(self):
         super().__init__(
             id="dat",
