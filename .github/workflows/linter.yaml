@@ -9,14 +9,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: chartboost/ruff-action@v1
+      - uses: actions/setup-python@v5
         with:
-          args: '--fix'
-          changed-files: 'true'
-      - uses: chartboost/ruff-action@v1
-        with:
-          args: 'format'
-          changed-files: 'true'
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff
+      - name: Run Ruff
+        run: |
+          ruff check --fix --output-format=github .
+          ruff format --output-format=github .
       - name: Check for modified files
         id: git-check
         run: echo "modified=$(if git diff-index --quiet HEAD --; then echo "false"; else echo "true"; fi)" >> $GITHUB_OUTPUT
