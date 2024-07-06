@@ -1,0 +1,16 @@
+# pixi environments
+.pixi
+*.egg-info
+
+# ide's
+/.idea
+
+# build files
+/dist
+/.pdm-build
+
+# root test files
+/test_*.py
+/*.png
+/*.jpg
+/*.jpeg
