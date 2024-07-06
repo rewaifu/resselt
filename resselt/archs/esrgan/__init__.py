@@ -198,10 +198,13 @@ class ESRGANArch(Architecture[RRDBNet]):
             plus=plus,
             shuffle_factor=shuffle_factor,
         )
-
+        if shuffle_factor:
+            in_nc //= shuffle_factor**2
+            scale //= shuffle_factor
         return WrappedModel(
             model=model,
             in_channels=in_nc,
             out_channels=out_nc,
-            upscale=scale
+            upscale=scale,
+            name="ESRGAN"
         )
