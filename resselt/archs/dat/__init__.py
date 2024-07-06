@@ -121,4 +121,5 @@ class DatArch(Architecture[DAT]):
             in_channels=in_chans,
             out_channels=in_chans,
             upscale=upscale,
+            name="DAT"
         )
