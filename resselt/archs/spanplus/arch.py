@@ -200,7 +200,7 @@ class SpanPlus(nn.Module):
         elif upsampler == "dys":
             self.upsampler = DySample(feature_channels, out_channels, upscale)
         elif upsampler == "conv":
-            if upsampler != 1:
+            if upscale != 1:
                 msg = "conv supports only 1x"
                 raise ValueError(msg)
 

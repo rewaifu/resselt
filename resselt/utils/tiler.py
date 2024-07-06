@@ -49,20 +49,25 @@ class Tiler(ABC):
         height, width = tile.shape[:2]
 
         if height < self.size.height or width < self.size.width:
-            padded_tile = np.zeros(
-                (self.size.height, self.size.width, tile.shape[2]), dtype=tile.dtype
-            )
+            if tile.ndim > 2:
+                padded_tile = np.zeros(
+                    (self.size.height, self.size.width, tile.shape[2]), dtype=tile.dtype
+                )
+            else:
+                padded_tile = np.zeros(
+                    (self.size.height, self.size.width), dtype=tile.dtype
+                )
             padded_tile[:height, :width] = tile
             return padded_tile
         else:
             return tile
 
     def concatenate_tiles(
-        self,
-        tiles: List[np.ndarray],
-        original_height: int,
-        original_width: int,
-        scale: int | None = None,
+            self,
+            tiles: List[np.ndarray],
+            original_height: int,
+            original_width: int,
+            scale: int | None = None,
     ) -> np.ndarray:
         """Concatenate tiles into a single image, removing padding if present."""
 
@@ -80,7 +85,7 @@ class Tiler(ABC):
         )
 
         for tile_index, (tile_y, tile_x) in enumerate(
-            np.ndindex(num_tiles_height, num_tiles_width)
+                np.ndindex(num_tiles_height, num_tiles_width)
         ):
             start_y = tile_y * tile_size.height
             end_y = min(start_y + tile_size.height, original_height)
@@ -88,8 +93,8 @@ class Tiler(ABC):
             end_x = min(start_x + tile_size.width, original_width)
 
             img[start_y:end_y, start_x:end_x] = tiles[tile_index][
-                : end_y - start_y, : end_x - start_x
-            ]
+                                                : end_y - start_y, : end_x - start_x
+                                                ]
 
         return img
 
@@ -103,6 +108,19 @@ class MaxTiler(Tiler):
         height, width = img.shape[:2]
         biggest_size = max(height, width)
         self.size = Size(biggest_size, biggest_size)
+
+    def decrease_size(self):
+        self.size = Size(self.size.height // 2, self.size.width // 2)
+
+
+class ExactTiler(Tiler):
+    def __init__(self, tile_size: int = 256):
+        super().__init__(Size(0, 0))
+        self.tile_size = tile_size
+
+    @override
+    def tiling_hk(self, img: np.ndarray):
+        self.size = Size(self.tile_size, self.tile_size)
 
     def decrease_size(self):
         self.size = Size(self.size.height // 2, self.size.width // 2)
