@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Package for recognizing and executing Image Super-Resolution PyTorch architectures"
 authors = [{ name = "Sekiju" }, { name = "umzi" }]
 requires-python = ">=3.10"
-dependencies = ["torch>=2.3.0,<2.4", "torchvision>=0.18.0,<0.19", "einops>=0.8.0,<0.9"]
+dependencies = ["torch", "torchvision", "einops", "safetensors"]
 
 [system-requirements]
 cuda = "12.1"
@@ -16,6 +16,7 @@ build-backend = "pdm.backend"
 [tool.pixi.project]
 channels = ["nvidia", "pytorch", "conda-forge"]
 platforms = ["win-64", "linux-64"]
+conda-pypi-map = { "pytorch" = "local/pytorch_mapping.json" }
 
 [tool.pixi.pypi-dependencies]
 resselt = { path = ".", editable = true }
@@ -25,13 +26,12 @@ default = { solve-group = "default" }
 dev = { features = ["dev"], solve-group = "default" }
 build = { features = ["build"], solve-group = "default" }
 
-[tool.pixi.tasks]
-
 [tool.pixi.dependencies]
 pytorch = { version = ">=2.3.0,<2.4", channels = ["pytorch"] }
 torchvision = { version = ">=0.18.0,<0.19", channels = ["pytorch"] }
 pytorch-cuda = { version = "12.1.*", channels = ["pytorch"] }
 einops = ">=0.8.0,<0.9"
+safetensors = ">=0.4.3,<0.5"
 
 [tool.pixi.feature.dev.tasks]
 test = "pytest"
