@@ -33,7 +33,7 @@ def upscale_with_tiler(
         tiles = tensor2image(tensors)
 
         height, width = img.shape[:2]
-        result = tiler.concatenate_tiles(tiles, height, width, wrapped_model.upscale)
+        result = tiler.merge(tiles, height, width, wrapped_model.upscale)
 
         return result
 

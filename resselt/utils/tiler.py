@@ -48,18 +48,16 @@ class Tiler(ABC):
 
     def _pad_tile(self, tile: np.ndarray) -> np.ndarray:
         height, width = tile.shape[:2]
+        pad_height = max(self.size.height - height, 0)
+        pad_width = max(self.size.width - width, 0)
 
-        if height < self.size.height or width < self.size.width:
-            if tile.ndim > 2:
-                padded_tile = np.zeros((self.size.height, self.size.width, tile.shape[2]), dtype=tile.dtype)
-            else:
-                padded_tile = np.zeros((self.size.height, self.size.width), dtype=tile.dtype)
-            padded_tile[:height, :width] = tile
-            return padded_tile
+        if pad_height > 0 or pad_width > 0:
+            pad_widths = ((0, pad_height), (0, pad_width)) + ((0, 0),) * (tile.ndim - 2)
+            return np.pad(tile, pad_widths, mode='constant', constant_values=1)
         else:
             return tile
 
-    def concatenate_tiles(
+    def merge(
         self,
         tiles: List[np.ndarray],
         original_height: int,
@@ -77,7 +75,11 @@ class Tiler(ABC):
         num_tiles_height = (original_height + tile_size.height - 1) // tile_size.height
         num_tiles_width = (original_width + tile_size.width - 1) // tile_size.width
 
-        img = np.zeros((original_height, original_width, tiles[0].shape[2]), dtype=tiles[0].dtype)
+        sample_tile = tiles[0]
+        if sample_tile.ndim > 2:
+            img = np.zeros((original_height, original_width, sample_tile.shape[2]), dtype=sample_tile.dtype)
+        else:
+            img = np.zeros((original_height, original_width), dtype=sample_tile.dtype)
 
         for tile_index, (tile_y, tile_x) in enumerate(np.ndindex(num_tiles_height, num_tiles_width)):
             start_y = tile_y * tile_size.height
@@ -101,7 +103,7 @@ class MaxTiler(Tiler):
         self.size = Size(biggest_size, biggest_size)
 
     def decrease_size(self):
-        self.size = Size(self.size.height // 2, self.size.width // 2)
+        self.size = Size(max(16, self.size.height // 2), max(16, self.size.width // 2))
 
 
 class ExactTiler(Tiler):

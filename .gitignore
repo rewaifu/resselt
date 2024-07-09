@@ -11,9 +11,6 @@
 
 # Root develop files
 /*.py
-/*.png
-/*.jpg
-/*.jpeg
 
 /tests/assets
 /resselt/detect/

@@ -3396,16 +3396,16 @@ packages:
 - kind: pypi
   name: pepeline
   version: 0.3.7
-  url: https://files.pythonhosted.org/packages/d7/27/dd2c0d28fe2b6e43e2b12e2b138b1bd3ed08a30e0790b7bbe95bf44108c5/pepeline-0.3.7-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
-  sha256: 550128655c437395393802c32fcdd11b730ba4b9e2f1979009acf6ea65635060
+  url: https://files.pythonhosted.org/packages/3e/4e/06bdbbb757d1aec9f38e5aa2ce7c092fd1c51dd402e768ec5864d3021805/pepeline-0.3.7-cp312-none-win_amd64.whl
+  sha256: 413e882e19cd893b177b6ca329da2c7c5a4cc59c156ff9b7470e5e5260449dd5
   requires_dist:
   - numpy>=1.16.0
   requires_python: '>=3.8'
 - kind: pypi
   name: pepeline
   version: 0.3.7
-  url: https://files.pythonhosted.org/packages/3e/4e/06bdbbb757d1aec9f38e5aa2ce7c092fd1c51dd402e768ec5864d3021805/pepeline-0.3.7-cp312-none-win_amd64.whl
-  sha256: 413e882e19cd893b177b6ca329da2c7c5a4cc59c156ff9b7470e5e5260449dd5
+  url: https://files.pythonhosted.org/packages/d7/27/dd2c0d28fe2b6e43e2b12e2b138b1bd3ed08a30e0790b7bbe95bf44108c5/pepeline-0.3.7-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
+  sha256: 550128655c437395393802c32fcdd11b730ba4b9e2f1979009acf6ea65635060
   requires_dist:
   - numpy>=1.16.0
   requires_python: '>=3.8'
