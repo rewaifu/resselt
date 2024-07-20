@@ -16,7 +16,7 @@ build-backend = "pdm.backend"
 [tool.pixi.project]
 channels = ["nvidia", "pytorch", "conda-forge"]
 platforms = ["win-64", "linux-64"]
-conda-pypi-map = { "pytorch" = "local/pytorch_mapping.json" }
+conda-pypi-map = { "pytorch" = "https://public.yor.ovh/pytorch_mapping.json" }
 
 [tool.pixi.pypi-dependencies]
 resselt = { path = ".", editable = true }

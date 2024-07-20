@@ -3991,7 +3991,7 @@ packages:
   name: resselt
   version: 0.1.0
   path: .
-  sha256: 36aa11388f247587c0fcb92c91e894e8df38ba4e6c2a2a27d2bfb5fc2bc44f01
+  sha256: 481a058264e5776412db3c67a27006141b0991b82f8c531a98c0cc2e4ea9f745
   requires_dist:
   - torch
   - torchvision
