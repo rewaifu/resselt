@@ -14,14 +14,13 @@ def upscale_with_tiler(
 ) -> np.ndarray:
     def _upscale() -> np.ndarray:
         tiles = tiler(img)
-        tensors = []
 
         for tile in tiles:
             try:
-                tile_tensor = image2tensor(tile).to(device).unsqueeze(0)
+                tile_tensor = image2tensor(tile.img).to(device).unsqueeze(0)
                 with torch.no_grad():
                     output_tensor = wrapped_model(tile_tensor)
-                tensors.append(output_tensor)
+                tile.img = tensor2image(output_tensor)
             except torch.cuda.OutOfMemoryError:
                 tiler.decrease_size()
                 empty_cuda_cache()
@@ -29,8 +28,6 @@ def upscale_with_tiler(
             except RuntimeError as e:
                 print(f'RuntimeError: {e}')
                 raise e
-
-        tiles = tensor2image(tensors)
 
         height, width = img.shape[:2]
         result = tiler.merge(tiles, height, width, wrapped_model.upscale)

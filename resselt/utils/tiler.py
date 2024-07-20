@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import math
 from abc import abstractmethod, ABC
-from typing import List, NamedTuple, Union
+from dataclasses import dataclass
+from typing import List, NamedTuple, Union, Tuple, Optional
 import numpy as np
 from typing_extensions import override
 
@@ -15,27 +16,162 @@ class Size(NamedTuple):
     width: int
 
 
-class Tiler(ABC):
-    def __init__(self, size: Union[Size, int]):
-        self.size = Size(size, size) if isinstance(size, int) else size
+@dataclass
+class Padding:
+    top: int
+    right: int
+    bottom: int
+    left: int
 
-    def __call__(self, image: np.ndarray) -> List[np.ndarray]:
-        height, width = image.shape[:2]
+    @staticmethod
+    def all(value: int) -> Padding:
+        return Padding(value, value, value, value)
+
+    @staticmethod
+    def to(value: Padding | int) -> Padding:
+        if isinstance(value, int):
+            return Padding.all(value)
+        return value
+
+    def min(self, other: Padding | int) -> Padding:
+        other = Padding.to(other)
+        return Padding(
+            min(self.top, other.top),
+            min(self.right, other.right),
+            min(self.bottom, other.bottom),
+            min(self.left, other.left),
+        )
+
+    @property
+    def horizontal(self) -> int:
+        return self.left + self.right
+
+    @property
+    def vertical(self) -> int:
+        return self.top + self.bottom
+
+    def scale(self, factor: int) -> Padding:
+        return Padding(
+            self.top * factor,
+            self.right * factor,
+            self.bottom * factor,
+            self.left * factor,
+        )
+
+    def remove_from(self, image: np.ndarray) -> np.ndarray:
+        h, w, _ = image.shape
+
+        return image[
+            self.top : (h - self.bottom),
+            self.left : (w - self.right),
+            ...,
+        ]
+
+
+@dataclass
+class Region:
+    x: int
+    y: int
+    width: int
+    height: int
+
+    @property
+    def size(self) -> Size:
+        return Size(self.height, self.width)
+
+    def intersect(self, other: Region) -> Region:
+        x = max(self.x, other.x)
+        y = max(self.y, other.y)
+        width = min(self.x + self.width, other.x + other.width) - x
+        height = min(self.y + self.height, other.y + other.height) - y
+        return Region(x, y, width, height)
+
+    def child_padding(self, child: Region) -> Padding:
+        left = child.x - self.x
+        top = child.y - self.y
+        right = self.width - child.width - left
+        bottom = self.height - child.height - top
+        return Padding(top, right, bottom, left)
+
+    def add_padding(self, pad: Padding) -> Region:
+        return Region(
+            x=self.x - pad.left,
+            y=self.y - pad.top,
+            width=self.width + pad.horizontal,
+            height=self.height + pad.vertical,
+        )
+
+    def remove_padding(self, pad: Padding) -> Region:
+        return self.add_padding(pad.scale(-1))
+
+    def scale(self, factor: int) -> Region:
+        return Region(
+            self.x * factor,
+            self.y * factor,
+            self.width * factor,
+            self.height * factor,
+        )
+
+    def read_from(self, img: np.ndarray) -> np.ndarray:
+        h, w, _ = img.shape
+        if (h, w) == self.size:
+            return img
+
+        return img[
+            self.y : (self.y + self.height),
+            self.x : (self.x + self.width),
+            ...,
+        ]
+
+    def write_into(self, lhs: np.ndarray, rhs: np.ndarray):
+        h, w, c = rhs.shape
+        print(h, w, self.size)
+        assert (h, w) == self.size
+        assert c == lhs.shape[2]
+
+        if c == 1:
+            if lhs.ndim == 2 and rhs.ndim == 3:
+                rhs = rhs[:, :, 0]
+            if lhs.ndim == 3 and rhs.ndim == 2:
+                rhs = np.expand_dims(rhs, axis=2)
+
+        lhs[
+            self.y : (self.y + self.height),
+            self.x : (self.x + self.width),
+            ...,
+        ] = rhs
+
+
+@dataclass
+class Tile:
+    region: Region
+    padding: Padding
+    img: np.ndarray
+
+
+class Tiler(ABC):
+    def __init__(self, size: Size):
+        self.size = size
+
+    def __call__(self, img: np.ndarray) -> List[Tile]:
+        h, w, c = img.shape
+        img_region = Region(0, 0, w, h)
+
+        self.tiling_hk(img)
+
+        tile_count_x = math.ceil(w / self.size.width)
+        tile_count_y = math.ceil(h / self.size.height)
+        tile_size_x = math.ceil(w / tile_count_x)
+        tile_size_y = math.ceil(h / tile_count_y)
+
         tiles = []
 
-        self.tiling_hk(image)
+        for y, x in np.ndindex(tile_count_y, tile_count_x):
+            tile = Region(x * tile_size_x, y * tile_size_y, tile_size_x, tile_size_y).intersect(img_region)
+            pad = img_region.child_padding(tile).min(16)
+            padded_tile = tile.add_padding(pad)
 
-        num_tiles_height = (height + self.size.height - 1) // self.size.height
-        num_tiles_width = (width + self.size.width - 1) // self.size.width
-
-        for tile_y, tile_x in np.ndindex(num_tiles_height, num_tiles_width):
-            start_y = tile_y * self.size.height
-            end_y = min(start_y + self.size.height, height)
-            start_x = tile_x * self.size.width
-            end_x = min(start_x + self.size.width, width)
-
-            padded_tile = self._pad_tile(image[start_y:end_y, start_x:end_x])
-            tiles.append(padded_tile)
+            tiles.append(Tile(padding=pad, img=padded_tile.read_from(img), region=tile))
 
         return tiles
 
@@ -46,50 +182,28 @@ class Tiler(ABC):
     def tiling_hk(self, img: np.ndarray):
         pass
 
-    def _pad_tile(self, tile: np.ndarray) -> np.ndarray:
-        height, width = tile.shape[:2]
-        pad_height = max(self.size.height - height, 0)
-        pad_width = max(self.size.width - width, 0)
-
-        if pad_height > 0 or pad_width > 0:
-            pad_widths = ((0, pad_height), (0, pad_width)) + ((0, 0),) * (tile.ndim - 2)
-            return np.pad(tile, pad_widths, mode='constant', constant_values=1)
-        else:
-            return tile
-
     def merge(
         self,
-        tiles: List[np.ndarray],
+        tiles: List[Tile],
         original_height: int,
         original_width: int,
-        scale: int | None = None,
+        factor: Optional[int] = 1,
     ) -> np.ndarray:
         """Concatenate tiles into a single image, removing padding if present."""
 
-        tile_size = self.size
-        if scale is not None:
-            tile_size = Size(tile_size.height * scale, tile_size.width * scale)
-            original_height = original_height * scale
-            original_width = original_width * scale
-
-        num_tiles_height = (original_height + tile_size.height - 1) // tile_size.height
-        num_tiles_width = (original_width + tile_size.width - 1) // tile_size.width
-
-        sample_tile = tiles[0]
+        sample_tile = tiles[0].img
         if sample_tile.ndim > 2:
-            img = np.zeros((original_height, original_width, sample_tile.shape[2]), dtype=sample_tile.dtype)
+            merge_result = np.zeros((original_height * factor, original_width * factor, sample_tile.shape[2]), dtype=sample_tile.dtype)
         else:
-            img = np.zeros((original_height, original_width), dtype=sample_tile.dtype)
+            merge_result = np.zeros((original_height * factor, original_width * factor), dtype=sample_tile.dtype)
 
-        for tile_index, (tile_y, tile_x) in enumerate(np.ndindex(num_tiles_height, num_tiles_width)):
-            start_y = tile_y * tile_size.height
-            end_y = min(start_y + tile_size.height, original_height)
-            start_x = tile_x * tile_size.width
-            end_x = min(start_x + tile_size.width, original_width)
+        for tile in tiles:
+            region = tile.region.scale(factor)
+            padding = tile.padding.scale(factor)
 
-            img[start_y:end_y, start_x:end_x] = tiles[tile_index][: end_y - start_y, : end_x - start_x]
+            region.write_into(merge_result, padding.remove_from(tile.img))
 
-        return img
+        return merge_result
 
 
 class MaxTiler(Tiler):
@@ -107,8 +221,15 @@ class MaxTiler(Tiler):
 
 
 class ExactTiler(Tiler):
-    def __init__(self, tile_size: int = 256):
-        super().__init__(Size(tile_size, tile_size))
+    def __init__(self, size: Union[Size, Tuple[int, int], int] = 256):
+        if isinstance(size, int):
+            size = Size(size, size)
+        elif isinstance(size, tuple):
+            size = Size(size[0], size[1])
+        elif not isinstance(size, Size):
+            raise TypeError('size must be an instance of Size, a tuple of two integers, or an integer')
+
+        super().__init__(size)
 
     def decrease_size(self):
         raise 'ExactTiler does not support decreasing size.'
@@ -128,6 +249,7 @@ class AutoTiler(Tiler):
 
         height, width = img.shape[:2]
         self.size = Size(height // total_tiles, width // total_tiles)
+        print(self.size)
 
     def decrease_size(self):
         raise 'AutoTiler does not support decreasing size.'
