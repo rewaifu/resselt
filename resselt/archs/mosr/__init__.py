@@ -39,7 +39,7 @@ class MoSRArch(Architecture[MoSR]):
             out_ch = state['upsampler.end_conv.weight'].shape[0]
             upscale = dysample_scale(state['upsampler.offset.weight'].shape[0])
         model = MoSR(
-            in_ch=in_ch, out_ch=out_ch, upscale=upscale, blocks=blocks,dim=dim, upsampler=upsampler, expansion_ratio=expansion_ratio
+            in_ch=in_ch, out_ch=out_ch, upscale=upscale, blocks=blocks, dim=dim, upsampler=upsampler, expansion_ratio=expansion_ratio
         )
 
         return WrappedModel(model=model, in_channels=in_ch, out_channels=out_ch, upscale=upscale, name='MoSR')
