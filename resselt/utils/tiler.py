@@ -253,3 +253,16 @@ class AutoTiler(Tiler):
 
     def decrease_size(self):
         raise 'AutoTiler does not support decreasing size.'
+
+
+class NoTiling(Tiler):
+    def __init__(self):
+        super().__init__(Size(0, 0))
+
+    @override
+    def tiling_hk(self, img: np.ndarray):
+        h, w = img.shape[:2]
+        self.size = Size(h, w)
+
+    def decrease_size(self):
+        raise 'NoTiling does not support decreasing size.'

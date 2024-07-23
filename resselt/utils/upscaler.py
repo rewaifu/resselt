@@ -34,7 +34,7 @@ def upscale_with_tiler(
 
         return result
 
-    wrapped_model.eval()
+    wrapped_model.to(device).eval()
 
     output_img = _upscale()
 
