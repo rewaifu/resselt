@@ -7,9 +7,6 @@ from typing import List, NamedTuple, Union, Tuple, Optional
 import numpy as np
 from typing_extensions import override
 
-from resselt.registry.architecture import WrappedModel
-from resselt.utils.metrics import calculate_image_elements, calculate_memory_usage
-
 
 class Size(NamedTuple):
     height: int
@@ -124,8 +121,9 @@ class Region:
         ]
 
     def write_into(self, lhs: np.ndarray, rhs: np.ndarray):
-        h, w, c = rhs.shape
-        print(h, w, self.size)
+        h, w = rhs.shape[:2]
+        c = 1 if rhs.ndim == 2 else rhs.shape[2]
+
         assert (h, w) == self.size
         assert c == lhs.shape[2]
 
@@ -154,7 +152,7 @@ class Tiler(ABC):
         self.size = size
 
     def __call__(self, img: np.ndarray) -> List[Tile]:
-        h, w, c = img.shape
+        h, w = img.shape[:2]
         img_region = Region(0, 0, w, h)
 
         self.tiling_hk(img)
@@ -233,26 +231,6 @@ class ExactTiler(Tiler):
 
     def decrease_size(self):
         raise 'ExactTiler does not support decreasing size.'
-
-
-class AutoTiler(Tiler):
-    def __init__(self, wrapped_model: WrappedModel):
-        super().__init__(Size(0, 0))
-
-        max_elements, _ = calculate_memory_usage(wrapped_model)
-        self.max_elements = max_elements
-
-    @override
-    def tiling_hk(self, img: np.ndarray):
-        img_elements = calculate_image_elements(img)
-        total_tiles = math.ceil(img_elements / self.max_elements)
-
-        height, width = img.shape[:2]
-        self.size = Size(height // total_tiles, width // total_tiles)
-        print(self.size)
-
-    def decrease_size(self):
-        raise 'AutoTiler does not support decreasing size.'
 
 
 class NoTiling(Tiler):
