@@ -22,14 +22,6 @@ output_img = upscale_with_tiler(img, tiler, wrapped_model, device)
 save(output_img, "output.png")
 ```
 
-## Build
-First, download the pixi tool from https://pixi.sh/latest/ and run the following command:
-```bash
-> pixi install -e build
-> pixi run build
-```
-
-
 ## Supported architectures
 * [ATD](https://github.com/LabShuHangGU/Adaptive-Token-Dictionary)
 * [SRVGGNetCompact](https://github.com/XPixelGroup/BasicSR/blob/master/basicsr/archs/srvgg_arch.py)
