@@ -368,9 +368,7 @@ class plksr(nn.Module):
         self.to_img = nn.PixelShuffle(upscaling_factor)
 
         self.repeat_op = (
-            partial(repeat_interleave, n=upscaling_factor**2)
-            if is_coreml
-            else partial(torch.repeat_interleave, repeats=upscaling_factor**2, dim=1)
+            partial(repeat_interleave, n=upscaling_factor**2) if is_coreml else partial(torch.repeat_interleave, repeats=upscaling_factor**2, dim=1)
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
