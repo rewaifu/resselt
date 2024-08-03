@@ -1,9 +1,0 @@
-# serializer version: 1
-# name: test_spanplus_inference
-  WrappedModel(
-    in_channels=3,
-    name='SPANPlus',
-    out_channels=3,
-    upscale=2,
-  )
-# ---

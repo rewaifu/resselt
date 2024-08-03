@@ -7,7 +7,7 @@ import torch
 from pepeline import read, save
 
 from resselt import global_registry
-from resselt.utils import upscale_with_tiler, AutoTiler
+from resselt.utils import upscale_with_tiler, MaxTiler
 
 device = torch.device("cuda")
 torch.set_default_device(device)
@@ -16,7 +16,7 @@ state_dict = torch.load("spanplus_2x.pth")
 wrapped_model = global_registry.load_from_state_dict(state_dict)
 
 img = read("test.jpg", None, 0)
-tiler = AutoTiler(wrapped_model)
+tiler = MaxTiler()
 
 output_img = upscale_with_tiler(img, tiler, wrapped_model, device)
 save(output_img, "output.png")

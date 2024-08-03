@@ -346,9 +346,7 @@ class L_SA(nn.Module):
             self.split_size[1],
             1,
         )
-        img_mask_0 = (
-            img_mask_0.permute(0, 1, 3, 2, 4, 5).contiguous().view(-1, self.split_size[0], self.split_size[1], 1)
-        )  # nW, sw[0], sw[1], 1
+        img_mask_0 = img_mask_0.permute(0, 1, 3, 2, 4, 5).contiguous().view(-1, self.split_size[0], self.split_size[1], 1)  # nW, sw[0], sw[1], 1
         mask_windows_0 = img_mask_0.view(-1, self.split_size[0] * self.split_size[1])
         attn_mask_0 = mask_windows_0.unsqueeze(1) - mask_windows_0.unsqueeze(2)
         attn_mask_0 = attn_mask_0.masked_fill(attn_mask_0 != 0, -100.0).masked_fill(attn_mask_0 == 0, 0.0)
@@ -362,9 +360,7 @@ class L_SA(nn.Module):
             self.split_size[0],
             1,
         )
-        img_mask_1 = (
-            img_mask_1.permute(0, 1, 3, 2, 4, 5).contiguous().view(-1, self.split_size[1], self.split_size[0], 1)
-        )  # nW, sw[1], sw[0], 1
+        img_mask_1 = img_mask_1.permute(0, 1, 3, 2, 4, 5).contiguous().view(-1, self.split_size[1], self.split_size[0], 1)  # nW, sw[1], sw[0], 1
         mask_windows_1 = img_mask_1.view(-1, self.split_size[1] * self.split_size[0])
         attn_mask_1 = mask_windows_1.unsqueeze(1) - mask_windows_1.unsqueeze(2)
         attn_mask_1 = attn_mask_1.masked_fill(attn_mask_1 != 0, -100.0).masked_fill(attn_mask_1 == 0, 0.0)
@@ -537,9 +533,9 @@ class RG_SA(nn.Module):
 
         # CPE
         # v_shape=(B, H, N', C//H)
-        v = v + self.cpe(v.transpose(1, 2).reshape(B, -1, C).transpose(1, 2).contiguous().view(B, C, H // _scale, W // _scale)).view(
-            B, C, -1
-        ).view(B, self.num_heads, int(C / self.num_heads), -1).transpose(-1, -2)
+        v = v + self.cpe(v.transpose(1, 2).reshape(B, -1, C).transpose(1, 2).contiguous().view(B, C, H // _scale, W // _scale)).view(B, C, -1).view(
+            B, self.num_heads, int(C / self.num_heads), -1
+        ).transpose(-1, -2)
 
         x = (attn @ v).transpose(1, 2).reshape(B, N, C)
         x = self.proj(x)

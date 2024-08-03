@@ -1,9 +1,0 @@
-# serializer version: 1
-# name: test_atd_inference
-  WrappedModel(
-    in_channels=3,
-    name='ATD',
-    out_channels=3,
-    upscale=4,
-  )
-# ---

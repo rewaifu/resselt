@@ -110,10 +110,7 @@ class RGTArch(Architecture[RGT]):
         # c_ratio is only defined if at least one depth is >= 2
         for i, d in enumerate(depth):
             if d >= 2:
-                c_ratio = (
-                    state_dict[f'layers.{i}.blocks.1.attn.conv.weight'].shape[0]
-                    / state_dict[f'layers.{i}.blocks.1.attn.conv.weight'].shape[1]
-                )
+                c_ratio = state_dict[f'layers.{i}.blocks.1.attn.conv.weight'].shape[0] / state_dict[f'layers.{i}.blocks.1.attn.conv.weight'].shape[1]
                 break
 
         upscale, _ = get_pixelshuffle_params(state_dict, 'upsample')
