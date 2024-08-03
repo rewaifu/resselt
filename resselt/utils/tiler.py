@@ -56,7 +56,7 @@ class Padding:
         )
 
     def remove_from(self, image: np.ndarray) -> np.ndarray:
-        h, w, _ = image.shape
+        h, w = image.shape[:2]
 
         return image[
             self.top : (h - self.bottom),
@@ -110,7 +110,7 @@ class Region:
         )
 
     def read_from(self, img: np.ndarray) -> np.ndarray:
-        h, w, _ = img.shape
+        h, w = img.shape[:2]
         if (h, w) == self.size:
             return img
 
