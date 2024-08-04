@@ -19,6 +19,7 @@
 | [`DAT`](https://github.com/zhengchen1999/dat)                                                       		 | [Apache 2.0](https://github.com/zhengchen1999/DAT/blob/main/LICENSE)                  			       |
 | [`OmniSR`](https://github.com/Francis0625/Omni-SR)                                                  		 | [Apache 2.0](https://github.com/Francis0625/Omni-SR#license)                          			       |
 | [`SPANPlus`](https://github.com/umzi2/SPANPlus)                                                        | [Apache 2.0](https://github.com/hongyuanyu/SPAN/blob/main/LICENSE.txt)                          |
+| [`MoSR`](https://github.com/umzi2/MoSR)                                                        | [MIT](https://github.com/umzi2/MoSR/blob/master/LICENSE)                          |
 
 
 ## License
