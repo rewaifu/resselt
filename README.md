@@ -34,6 +34,7 @@ save(output_img, "output.png")
 * [SPAN](https://github.com/hongyuanyu/span)
 * [SPANPlus](https://github.com/umzi2/spanplus)
 * [SwinIR](https://github.com/JingyunLiang/SwinIR)
+* [MoSR](https://github.com/umzi2/MoSR)
 
 ## Credits
 * Based on [chaiNNer-org/spandrel](https://github.com/chaiNNer-org/spandrel)
