@@ -6,7 +6,6 @@ from resselt.archs.utils import DySample
 
 
 class LayerNorm(nn.Module):
-
     def __init__(self, dim: int, eps: float = 1e-6):
         super().__init__()
         self.weight = nn.Parameter(torch.ones(dim))
@@ -49,10 +48,7 @@ class GatedCNNBlock(nn.Module):
     https://github.com/yuweihao/MambaOut/blob/main/models/mambaout.py#L119
     """
 
-    def __init__(self, dim: int,
-                 expansion_ratio: float = 8 / 3,
-                 conv_ratio: float = 1.0,
-                 kernel_size: int = 7):
+    def __init__(self, dim: int, expansion_ratio: float = 8 / 3, conv_ratio: float = 1.0, kernel_size: int = 7):
         super().__init__()
         self.norm = LayerNorm(dim)
         hidden = int(expansion_ratio * dim)
@@ -69,7 +65,7 @@ class GatedCNNBlock(nn.Module):
     @staticmethod
     def _init_weights(m):
         if isinstance(m, nn.Conv2d | nn.Linear):
-            trunc_normal_(m.weight, std=.02)
+            trunc_normal_(m.weight, std=0.02)
             if m.bias is not None:
                 nn.init.constant_(m.bias, 0)
 
@@ -85,51 +81,47 @@ class GatedCNNBlock(nn.Module):
 class mosr(nn.Module):
     """Mamba Out Super-Resolution"""
 
-    def __init__(self,
-                 in_ch: int = 3,
-                 out_ch: int = 3,
-                 upscale: int = 4,
-                 n_block: int = 24,
-                 dim: int = 64,
-                 upsampler: str = "ps",  # "ps" "ds"
-                 kernel_size: int = 7,
-                 expansion_ratio: float = 1.5,
-                 conv_ratio: float = 1.0
-                 ):
+    def __init__(
+        self,
+        in_ch: int = 3,
+        out_ch: int = 3,
+        upscale: int = 4,
+        n_block: int = 24,
+        dim: int = 64,
+        upsampler: str = 'ps',  # "ps" "ds"
+        kernel_size: int = 7,
+        expansion_ratio: float = 1.5,
+        conv_ratio: float = 1.0,
+    ):
         super(mosr, self).__init__()
-        if upsampler in ["ps"]:
+        if upsampler in ['ps']:
             out_ch = in_ch
-        self.gblocks = nn.Sequential(*[nn.Conv2d(in_ch, dim, 3, 1, 1)] +
-                                      [GatedCNNBlock(dim=dim,
-                                                     expansion_ratio=expansion_ratio,
-                                                     kernel_size=kernel_size,
-                                                     conv_ratio=conv_ratio,
-
-                                                     )
-                                       for _ in range(n_block)] +
-                                      [nn.Conv2d(dim, dim * 2, 3, 1, 1),
-                                       nn.Mish(),
-                                       nn.Conv2d(dim * 2, dim, 3, 1, 1),
-                                       nn.Mish(),
-                                       nn.Conv2d(dim, dim, 1, 1)]
-                                     )
+        self.gblocks = nn.Sequential(
+            *[nn.Conv2d(in_ch, dim, 3, 1, 1)]
+            + [
+                GatedCNNBlock(
+                    dim=dim,
+                    expansion_ratio=expansion_ratio,
+                    kernel_size=kernel_size,
+                    conv_ratio=conv_ratio,
+                )
+                for _ in range(n_block)
+            ]
+            + [nn.Conv2d(dim, dim * 2, 3, 1, 1), nn.Mish(), nn.Conv2d(dim * 2, dim, 3, 1, 1), nn.Mish(), nn.Conv2d(dim, dim, 1, 1)]
+        )
 
         self.shortcut = ConvBlock(in_ch, dim)
 
-        if upsampler == "ps":
-            self.upsampler = nn.Sequential(
-                nn.Conv2d(dim, out_ch * (upscale ** 2), 3, 1, 1),
-                nn.PixelShuffle(upscale)
-            )
-        elif upsampler == "dys":
+        if upsampler == 'ps':
+            self.upsampler = nn.Sequential(nn.Conv2d(dim, out_ch * (upscale**2), 3, 1, 1), nn.PixelShuffle(upscale))
+        elif upsampler == 'dys':
             self.upsampler = DySample(dim, out_ch, upscale)
         else:
             raise NotImplementedError(
                 f'upsampler: {upsampler} not supported, choose one of these options: \
-                ["ps", "dys"]')
+                ["ps", "dys"]'
+            )
 
     def forward(self, x):
         x = self.gblocks(x) + (self.shortcut(x) - 0.5)
         return self.upsampler(x)
-
-
