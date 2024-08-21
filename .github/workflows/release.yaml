@@ -39,14 +39,14 @@ jobs:
           OLD_VERSION=$(grep ^version pyproject.toml | cut -d '"' -f 2)
           OLD_VERSION="\"$OLD_VERSION\""
           sed -i "s+version = $OLD_VERSION+version = ${{ github.event.inputs.version }}+g" pyproject.toml
+      - name: Publish to private repository
+        run: |
+          poetry config repositories.my_pypi ${{ secrets.PYPI_URL }}
+          poetry config http-basic.my_pypi ${{ secrets.PYPI_LOGIN }} ${{ secrets.PYPI_PASSWORD }}
+          poetry publish --repository my_pypi --build
       - name: Commit and push changes
-        if: steps.git-check.outputs.modified == 'true'
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           git commit -am "action: update version"
           git push
-      - run: |
-          poetry config repositories.my_pypi ${{ secrets.PYPI_URL }}
-          poetry config http-basic.my_pypi ${{ secrets.PYPI_LOGIN }} ${{ secrets.PYPI_PASSWORD }}
-          poetry publish --repository my_pypi --build
