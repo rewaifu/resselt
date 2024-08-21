@@ -19,7 +19,7 @@ jobs:
         run: |
           OLD_VERSION=$(grep ^version pyproject.toml | cut -d '"' -f 2)
           OLD_VERSION="\"$OLD_VERSION\""
-          sed -i "s+version = $OLD_VERSION+version = ${{ github.event.inputs.version }}+g" pyproject.toml
+          sed -i "s+version = $OLD_VERSION+version = \"${{ github.event.inputs.version }}\"+g" pyproject.toml
       - name: Build and publish to private repository
         uses: JRubics/poetry-publish@v2.0
         with:
