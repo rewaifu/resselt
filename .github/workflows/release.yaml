@@ -1,10 +1,12 @@
 name: Release
+
 on:
   workflow_dispatch:
     inputs:
       version:
         description: 'New package version'
         required: true
+
 permissions:
   contents: write
 
@@ -13,37 +15,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      - name: Load cached Poetry installation
-        id: cached-poetry
-        uses: actions/cache@v4
-        with:
-          path: ~/.local
-          key: poetry-0
-      - name: Install Poetry
-        if: steps.cached-poetry.outputs.cache-hit != 'true'
-        uses: snok/install-poetry@v1
-      - name: Load cached venv
-        id: cached-poetry-dependencies
-        uses: actions/cache@v4
-        with:
-          path: .venv
-          key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/poetry.lock') }}
-      - name: Install dependencies
-        if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
-        run: poetry install --no-interaction --no-root
       - name: Update version
         run: |
           OLD_VERSION=$(grep ^version pyproject.toml | cut -d '"' -f 2)
           OLD_VERSION="\"$OLD_VERSION\""
           sed -i "s+version = $OLD_VERSION+version = ${{ github.event.inputs.version }}+g" pyproject.toml
-      - name: Publish to private repository
-        run: |
-          poetry config repositories.my_pypi ${{ secrets.PYPI_URL }}
-          poetry config http-basic.my_pypi ${{ secrets.PYPI_LOGIN }} ${{ secrets.PYPI_PASSWORD }}
-          poetry publish --repository my_pypi --build
+      - name: Build and publish to private repository
+        uses: JRubics/poetry-publish@v2.0
+        with:
+          repository_url: ${{ secrets.PYPI_URL }}
+          repository_username: ${{ secrets.PYPI_LOGIN }}
+          repository_password: ${{ secrets.PYPI_PASSWORD }}
+          poetry_install_options: --without dev
       - name: Commit and push changes
         run: |
           git config --global user.name 'github-actions[bot]'
