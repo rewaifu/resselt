@@ -10,8 +10,9 @@ readme = "README.md"
 python = ">=3.10"
 safetensors = ">=0.4.3,<0.5"
 einops = ">=0.8.0,<1"
-torch = {version = ">=2.3.0", source = "pytorch-gpu"}
-torchvision = {version = ">=0.18.0", source = "pytorch-gpu"}
+torch = ">=2.3.0"
+torchvision = ">=0.18.0"
+numpy = "<2"
 
 [tool.poetry.group.dev.dependencies]
 pepeline = "^0.3.8"
