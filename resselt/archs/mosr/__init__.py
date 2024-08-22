@@ -1,3 +1,4 @@
+import math
 from typing import Mapping
 
 from .arch import mosr as MoSR
@@ -39,6 +40,10 @@ class MoSRArch(Architecture[MoSR]):
             upsampler = 'dys'
             out_ch = state['upsampler.end_conv.weight'].shape[0]
             upscale = dysample_scale(state['upsampler.offset.weight'].shape[0])
+        elif "upsampler.in_to_k.weight" in state:
+            upsampler = 'gps'
+            out_ch = in_ch
+            upscale = math.isqrt(state['upsampler.in_to_k.weight'].shape[0]//8//out_ch)
         else:
             upsampler = 'ps'
             out_ch = in_ch
