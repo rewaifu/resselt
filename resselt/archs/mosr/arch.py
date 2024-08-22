@@ -6,15 +6,15 @@ from resselt.archs.utils import DySample
 
 
 class GPS(nn.Module):
-    """Geo ensemble PielShuffle
-    """
+    """Geo ensemble PielShuffle"""
 
     def __init__(
-            self, dim,
-            scale,
-            out_ch=3,
-            # Own parameters
-            kernel_size: int = 3
+        self,
+        dim,
+        scale,
+        out_ch=3,
+        # Own parameters
+        kernel_size: int = 3,
     ):
         super().__init__()
         self.in_to_k = nn.Conv2d(dim, scale * scale * out_ch * 8, kernel_size, 1, kernel_size // 2)
@@ -30,6 +30,7 @@ class GPS(nn.Module):
         x = x.reshape(x.shape[0], 8, -1, x.shape[-2], x.shape[-1])
         x = x.mean(dim=1)
         return x
+
 
 class LayerNorm(nn.Module):
     def __init__(self, dim: int, eps: float = 1e-6):
@@ -142,7 +143,7 @@ class mosr(nn.Module):
             self.upsampler = nn.Sequential(nn.Conv2d(dim, out_ch * (upscale**2), 3, 1, 1), nn.PixelShuffle(upscale))
         elif upsampler == 'dys':
             self.upsampler = DySample(dim, out_ch, upscale)
-        elif upsampler == "gps":
+        elif upsampler == 'gps':
             self.upsampler = GPS(dim, upscale, out_ch)
         else:
             raise NotImplementedError(
