@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "resselt"
-version = "1.0.1"
+version = "1.0.2"
 description = "Package for recognizing and executing Image Super-Resolution PyTorch architectures"
 authors = ["Sekiju", "umzi"]
 license = "MIT"
