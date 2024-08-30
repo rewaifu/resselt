@@ -59,19 +59,19 @@ class eimnArch(Architecture[eimn]):
                 'block1.0.mlp.DFFM.spatial_expand.weight',
                 'block1.0.mlp.DFFM.spatial_expand.bias',
                 'norm1.weight',
-                'norm1.bias'
+                'norm1.bias',
             ),
         )
 
     def load(self, state: Mapping[str, object]) -> WrappedModel:
-        pattern = r"block(\d+)"
+        pattern = r'block(\d+)'
         numbers = [int(re.search(pattern, s).group(1)) for s in state.keys() if re.search(pattern, s)]
         num_stages = max(numbers)
-        depths = get_seq_len(state, "block1")
-        mlp_ratio_shape = state["block1.0.mlp.linear_in.weight"].shape
+        depths = get_seq_len(state, 'block1')
+        mlp_ratio_shape = state['block1.0.mlp.linear_in.weight'].shape
         mlp_ratio = mlp_ratio_shape[0] // 2 / mlp_ratio_shape[1]
-        embed_dim = state["head.0.weight"].shape[0]
-        scale = pixelshuffle_scale(state["tail.0.weight"].shape[0], 3)
+        embed_dim = state['head.0.weight'].shape[0]
+        scale = pixelshuffle_scale(state['tail.0.weight'].shape[0], 3)
 
         model = eimn(
             embed_dims=embed_dim,
@@ -79,7 +79,6 @@ class eimnArch(Architecture[eimn]):
             depths=depths,
             mlp_ratios=mlp_ratio,
             num_stages=num_stages,
-
         )
 
         return WrappedModel(model=model, in_channels=3, out_channels=3, upscale=scale, name='EIMN')

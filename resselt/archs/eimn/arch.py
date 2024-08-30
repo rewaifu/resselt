@@ -11,25 +11,23 @@ class LayerNorm(nn.Module):
     """
 
     def __init__(
-            self,
-            normalized_shape: int,
-            eps: float = 1e-6,
-            data_format: str = "channels_first",
+        self,
+        normalized_shape: int,
+        eps: float = 1e-6,
+        data_format: str = 'channels_first',
     ):
         super().__init__()
         self.weight = nn.Parameter(torch.ones(normalized_shape))
         self.bias = nn.Parameter(torch.zeros(normalized_shape))
         self.eps = eps
         self.data_format = data_format
-        assert self.data_format in ["channels_last", "channels_first"]
+        assert self.data_format in ['channels_last', 'channels_first']
         self.normalized_shape = (normalized_shape,)
 
     def forward(self, x):
-        if self.data_format == "channels_last":
-            return F.layer_norm(
-                x, self.normalized_shape, self.weight, self.bias, self.eps
-            )
-        if self.data_format == "channels_first":
+        if self.data_format == 'channels_last':
+            return F.layer_norm(x, self.normalized_shape, self.weight, self.bias, self.eps)
+        if self.data_format == 'channels_first':
             u = x.mean(1, keepdim=True)
             s = (x - u).pow(2).mean(1, keepdim=True)
             x = (x - u) / torch.sqrt(s + self.eps)
@@ -38,9 +36,7 @@ class LayerNorm(nn.Module):
 
 
 class SADFFM(nn.Module):
-    def __init__(
-            self, dim: int, expand_ratio: float, bias: bool = True, drop: float = 0.0
-    ):
+    def __init__(self, dim: int, expand_ratio: float, bias: bool = True, drop: float = 0.0):
         super().__init__()
         hidden_dims = int(dim * expand_ratio)
         self.linear_in = nn.Conv2d(dim, hidden_dims * 2, kernel_size=1, bias=bias)
@@ -68,15 +64,15 @@ class SADFFM(nn.Module):
 
 class DFFM(nn.Module):
     def __init__(
-            self,
-            in_channels: int,
-            act_ratio: float = 0.25,
-            act_fn: type[nn.Module] = nn.GELU,
-            gate_fn: type[nn.Module] = nn.Sigmoid,
+        self,
+        in_channels: int,
+        act_ratio: float = 0.25,
+        act_fn: type[nn.Module] = nn.GELU,
+        gate_fn: type[nn.Module] = nn.Sigmoid,
     ):
         super().__init__()
         reduce_channels = int(in_channels * act_ratio)
-        self.norm = LayerNorm(in_channels, data_format="channels_first")
+        self.norm = LayerNorm(in_channels, data_format='channels_first')
         self.global_reduce = nn.Conv2d(in_channels, reduce_channels, 1)
         self.local_reduce = nn.Conv2d(in_channels, reduce_channels, 1)
         self.act_fn = act_fn()
@@ -91,13 +87,7 @@ class DFFM(nn.Module):
         x_global = self.act_fn(self.global_reduce(F.adaptive_avg_pool2d(x, 1)))
         x_local = self.act_fn(self.local_reduce(x))
         c_attn = self.gate_fn(self.channel_expand(x_global))
-        s_attn = self.gate_fn(
-            self.spatial_expand(
-                torch.cat(
-                    [x_local, x_global.expand(b, -1, x.shape[2], x.shape[3])], dim=1
-                )
-            )
-        )
+        s_attn = self.gate_fn(self.spatial_expand(torch.cat([x_local, x_global.expand(b, -1, x.shape[2], x.shape[3])], dim=1)))
         attn = c_attn * s_attn
         return identity * attn
 
@@ -150,21 +140,21 @@ class MOLRCM(nn.Module):
         query = self.proj_query(x_)
         query = self.region(query)
         query_1 = self.spatial_1(query[:, : self.split_c1, :, :])
-        query_2 = query[:, self.split_c1: (self.split_c1 + self.split_c2), :, :]
-        query_3 = self.spatial_2(query[:, (self.split_c1 + self.split_c2):, :, :])
+        query_2 = query[:, self.split_c1 : (self.split_c1 + self.split_c2), :, :]
+        query_3 = self.spatial_2(query[:, (self.split_c1 + self.split_c2) :, :, :])
         out = self.gate(self.fusion(torch.cat([query_1, query_2, query_3], dim=1)))
         return self.out(out * value)
 
 
 class EIMNBlock(nn.Module):
     def __init__(
-            self,
-            dim: int,
-            mlp_ratio: float = 4.0,
-            bias: bool = True,
-            drop: float = 0.0,
-            drop_path: float = 0.0,
-            norm: type[nn.Module] = nn.BatchNorm2d,
+        self,
+        dim: int,
+        mlp_ratio: float = 4.0,
+        bias: bool = True,
+        drop: float = 0.0,
+        drop_path: float = 0.0,
+        norm: type[nn.Module] = nn.BatchNorm2d,
     ):
         super().__init__()
         self.norm1 = norm(dim)
@@ -173,34 +163,26 @@ class EIMNBlock(nn.Module):
         self.norm2 = norm(dim)
         self.mlp = SADFFM(dim, mlp_ratio, bias, drop)
         layer_scale_init_value = 1e-2
-        self.layer_scale_1 = nn.Parameter(
-            layer_scale_init_value * torch.ones(dim), requires_grad=True
-        )
-        self.layer_scale_2 = nn.Parameter(
-            layer_scale_init_value * torch.ones(dim), requires_grad=True
-        )
+        self.layer_scale_1 = nn.Parameter(layer_scale_init_value * torch.ones(dim), requires_grad=True)
+        self.layer_scale_2 = nn.Parameter(layer_scale_init_value * torch.ones(dim), requires_grad=True)
 
     def forward(self, x):
-        x = x + self.drop_path(
-            self.layer_scale_1.unsqueeze(-1).unsqueeze(-1) * self.attn(self.norm1(x))
-        )
-        return x + self.drop_path(
-            self.layer_scale_2.unsqueeze(-1).unsqueeze(-1) * self.mlp(self.norm2(x))
-        )
+        x = x + self.drop_path(self.layer_scale_1.unsqueeze(-1).unsqueeze(-1) * self.attn(self.norm1(x)))
+        return x + self.drop_path(self.layer_scale_2.unsqueeze(-1).unsqueeze(-1) * self.mlp(self.norm2(x)))
 
 
 class eimn(nn.Module):
     def __init__(
-            self,
-            embed_dims: int = 64,  # detect
-            scale: int = 4,
-            depths: int = 1,  # detect
-            mlp_ratios: float = 2.66,  # detect
-            drop_rate: float = 0.0,  # detect
-            drop_path_rate: float = 0.0,  # detect
-            num_stages: int = 16,  # detect
-            freeze_param: bool = False,
-            norm: type[nn.Module] = nn.BatchNorm2d,
+        self,
+        embed_dims: int = 64,  # detect
+        scale: int = 4,
+        depths: int = 1,  # detect
+        mlp_ratios: float = 2.66,  # detect
+        drop_rate: float = 0.0,  # detect
+        drop_path_rate: float = 0.0,  # detect
+        num_stages: int = 16,  # detect
+        freeze_param: bool = False,
+        norm: type[nn.Module] = nn.BatchNorm2d,
     ):
         super().__init__()
         depths_ = [depths] * num_stages
@@ -212,33 +194,33 @@ class eimn(nn.Module):
         cur = 0
 
         self.head = nn.Sequential(nn.Conv2d(3, embed_dims, 3, 1, 1))
-        self.tail = nn.Sequential(
-            nn.Conv2d(embed_dims, 3 * scale * scale, 3, 1, 1), nn.PixelShuffle(scale)
-        )
+        self.tail = nn.Sequential(nn.Conv2d(embed_dims, 3 * scale * scale, 3, 1, 1), nn.PixelShuffle(scale))
 
         for i in range(self.num_stages):
-            block = nn.ModuleList([
-                EIMNBlock(
-                    dim=embed_dims,
-                    mlp_ratio=mlp_ratios,
-                    drop=drop_rate,
-                    drop_path=dpr[cur + j],
-                    norm=nn.BatchNorm2d,
-                )
-                for j in range(depths_[i])
-            ])
+            block = nn.ModuleList(
+                [
+                    EIMNBlock(
+                        dim=embed_dims,
+                        mlp_ratio=mlp_ratios,
+                        drop=drop_rate,
+                        drop_path=dpr[cur + j],
+                        norm=nn.BatchNorm2d,
+                    )
+                    for j in range(depths_[i])
+                ]
+            )
             norm = nn.LayerNorm(embed_dims)
             cur += depths_[i]
 
-            setattr(self, f"block{i + 1}", block)
-            setattr(self, f"norm{i + 1}", norm)
+            setattr(self, f'block{i + 1}', block)
+            setattr(self, f'norm{i + 1}', norm)
 
         if freeze_param:
             self.freeze_para()
 
     def freeze_param(self):
         for name, param in self.named_parameters():
-            if name.split(".")[0] == "tail":
+            if name.split('.')[0] == 'tail':
                 param.requires_grad = True
             else:
                 param.requires_grad = False
@@ -248,8 +230,8 @@ class eimn(nn.Module):
         identity = x
 
         for i in range(self.num_stages):
-            block = getattr(self, f"block{i + 1}")
-            norm = getattr(self, f"norm{i + 1}")
+            block = getattr(self, f'block{i + 1}')
+            norm = getattr(self, f'norm{i + 1}')
             for blk in block:
                 x = blk(x)
             x = x.permute(0, 2, 3, 1)  # (B, H, W, C)
