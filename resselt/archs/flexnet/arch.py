@@ -107,16 +107,21 @@ class OmniShift(nn.Module):
         self.conv5x5_reparam.weight = nn.Parameter(combined_weight)
 
     def forward(self, x):
-        if self.training:
-            self.repram_flag = True
-            out = self.forward_train(x)
-        elif self.training and self.repram_flag:
+        # if self.training:
+        #     self.repram_flag = True
+        #     out = self.forward_train(x)
+        # elif self.training and self.repram_flag:
+        #     self.reparam_5x5()
+        #     self.repram_flag = False
+        #     out = self.conv5x5_reparam(x)
+        # elif self.training and not self.repram_flag:
+        #     out = self.conv5x5_reparam(x)
+        if self.repram_flag:
             self.reparam_5x5()
             self.repram_flag = False
             out = self.conv5x5_reparam(x)
-        elif self.training and not self.repram_flag:
+        else:
             out = self.conv5x5_reparam(x)
-
         return out
 
 
@@ -335,7 +340,7 @@ class LinearPipeline(nn.Module):
     def __init__(
         self,
         dim: int = 48,
-        num_blocks: tuple[int] = (4, 6, 6, 8),
+        num_blocks: Sequence[int] = (4, 6, 6, 8),
         window_size: int = 8,
         hidden_rate: int = 4,
         channel_norm: bool = False,
@@ -378,7 +383,7 @@ class MetaPipeline(nn.Module):
     def __init__(
         self,
         dim: int = 48,
-        num_blocks: tuple[int] = (4, 6, 6, 8),
+        num_blocks: Sequence[int] = (4, 6, 6, 8),
         window_size: int = 8,
         hidden_rate: int = 4,
         channel_norm: bool = False,
