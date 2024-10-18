@@ -10,7 +10,7 @@ from resselt.archs.utils import DySample
 
 
 class Interpolate(nn.Module):
-    def __init__(self, scale_factor: int = 4, mode: str = "nearest"):
+    def __init__(self, scale_factor: int = 4, mode: str = 'nearest'):
         super(Interpolate, self).__init__()
         self.scale_factor = scale_factor
         self.mode = mode
@@ -37,9 +37,7 @@ class InterpolateUpsampler(nn.Sequential):
             m.append(nn.LeakyReLU(negative_slope=0.2, inplace=True))
 
         m.append(nn.Conv2d(dim, out_ch, 3, 1, 1))
-        super().__init__(
-            *m
-        )
+        super().__init__(*m)
 
 
 class ConvBlock(nn.Module):
@@ -51,18 +49,12 @@ class ConvBlock(nn.Module):
         self.in_channel = in_channel
         self.out_channel = out_channel
         self.block = nn.Sequential(
-            nn.Conv2d(
-                in_channel, out_channel, kernel_size=3, stride=strides, padding=1
-            ),
+            nn.Conv2d(in_channel, out_channel, kernel_size=3, stride=strides, padding=1),
             nn.Mish(),
-            nn.Conv2d(
-                out_channel, out_channel, kernel_size=3, stride=strides, padding=1
-            ),
+            nn.Conv2d(out_channel, out_channel, kernel_size=3, stride=strides, padding=1),
             nn.Mish(),
         )
-        self.conv11 = nn.Conv2d(
-            in_channel, out_channel, kernel_size=1, stride=strides, padding=0
-        )
+        self.conv11 = nn.Conv2d(in_channel, out_channel, kernel_size=1, stride=strides, padding=0)
 
     def forward(self, x):
         out1 = self.block(x)
@@ -80,8 +72,7 @@ class OmniShift(nn.Module):
         self.alpha = nn.Parameter(torch.randn(4), requires_grad=True)
 
         # Define the layers for testing
-        self.conv5x5_reparam = nn.Conv2d(in_channels=dim, out_channels=dim, kernel_size=5, padding=2, groups=dim,
-                                         bias=False)
+        self.conv5x5_reparam = nn.Conv2d(in_channels=dim, out_channels=dim, kernel_size=5, padding=2, groups=dim, bias=False)
         self.repram_flag = True
 
     def forward_train(self, x):
@@ -102,8 +93,12 @@ class OmniShift(nn.Module):
 
         identity_weight = F.pad(torch.ones_like(self.conv1x1.weight), (2, 2, 2, 2))
 
-        combined_weight = self.alpha[0] * identity_weight + self.alpha[1] * padded_weight_1x1 + self.alpha[
-            2] * padded_weight_3x3 + self.alpha[3] * self.conv5x5.weight
+        combined_weight = (
+            self.alpha[0] * identity_weight
+            + self.alpha[1] * padded_weight_1x1
+            + self.alpha[2] * padded_weight_3x3
+            + self.alpha[3] * self.conv5x5.weight
+        )
 
         device = self.conv5x5_reparam.weight.device
 
@@ -112,15 +107,14 @@ class OmniShift(nn.Module):
         self.conv5x5_reparam.weight = nn.Parameter(combined_weight)
 
     def forward(self, x):
-
         if self.training:
             self.repram_flag = True
             out = self.forward_train(x)
-        elif self.training == False and self.repram_flag == True:
+        elif self.training and self.repram_flag:
             self.reparam_5x5()
             self.repram_flag = False
             out = self.conv5x5_reparam(x)
-        elif self.training == False and self.repram_flag == False:
+        elif self.training and not self.repram_flag:
             out = self.conv5x5_reparam(x)
 
         return out
@@ -136,11 +130,7 @@ class MatMul(nn.Module):
 
 
 class LMLTVIT(nn.Module):
-    def __init__(self,
-                 dim: int = 48,
-                 window_size: int = 8,
-                 attn_drop: float = 0.0,
-                 proj_drop: float = 0.0):
+    def __init__(self, dim: int = 48, window_size: int = 8, attn_drop: float = 0.0, proj_drop: float = 0.0):
         super().__init__()
 
         self.dim = dim
@@ -157,11 +147,7 @@ class LMLTVIT(nn.Module):
     def window_partition(self, x, window_size):
         B, H, W, C = x.shape
         x = x.view(B, H // window_size, window_size, W // window_size, window_size, C)
-        return (
-            x.permute(0, 1, 3, 2, 4, 5)
-            .contiguous()
-            .view(-1, window_size, window_size, C)
-        )
+        return x.permute(0, 1, 3, 2, 4, 5).contiguous().view(-1, window_size, window_size, C)
 
     def window_reverse(self, windows, window_size, h, w):
         """
@@ -175,9 +161,7 @@ class LMLTVIT(nn.Module):
             x: (b, h, w, c)
         """
         b = int(windows.shape[0] / (h * w / window_size / window_size))
-        x = windows.view(
-            b, h // window_size, w // window_size, window_size, window_size, -1
-        )
+        x = windows.view(b, h // window_size, w // window_size, window_size, window_size, -1)
         return x.permute(0, 1, 3, 2, 4, 5).contiguous().view(b, h, w, -1)
 
     def get_lepe(self, x, func):
@@ -187,9 +171,7 @@ class LMLTVIT(nn.Module):
 
         H_sp, W_sp = self.window_size, self.window_size
         x = x.view(B, C, H // H_sp, H_sp, W // W_sp, W_sp)
-        x = (
-            x.permute(0, 2, 4, 1, 3, 5).contiguous().reshape(-1, C, H_sp, W_sp)
-        )  # B', C, H', W'
+        x = x.permute(0, 2, 4, 1, 3, 5).contiguous().reshape(-1, C, H_sp, W_sp)  # B', C, H', W'
 
         lepe = func(x)  # B', C, H', W'
         lepe = lepe.reshape(-1, C, H_sp * W_sp).permute(0, 2, 1).contiguous()
@@ -200,16 +182,14 @@ class LMLTVIT(nn.Module):
     def forward(self, x, resolution):
         _B, N, C = x.shape
         H, W = resolution
-        x = rearrange(x, "b (h w) c -> b c h w", h=H, w=W)
+        x = rearrange(x, 'b (h w) c -> b c h w', h=H, w=W)
         x = self.omni_shift(x)
-        x = rearrange(x, "b c h w -> b h w c")
+        x = rearrange(x, 'b c h w -> b h w c')
         ################################
         # 1. window partition
         ################################
         x_window = self.window_partition(x, self.window_size).permute(0, 3, 1, 2)
-        x_window = x_window.permute(0, 2, 3, 1).view(
-            -1, self.window_size * self.window_size, C
-        )
+        x_window = x_window.permute(0, 2, 3, 1).view(-1, self.window_size * self.window_size, C)
 
         ################################
         # 2. make qkv
@@ -240,15 +220,12 @@ class LMLTVIT(nn.Module):
 
         x = x.reshape(-1, self.window_size, self.window_size, C)
         x = self.window_reverse(x, self.window_size, H, W)
-        x = rearrange(x, "b h w c-> b (h w) c")
+        x = rearrange(x, 'b h w c-> b (h w) c')
         return x
 
 
 class ChannelMix(nn.Module):
-    def __init__(self,
-                 n_embd: int = 48,
-                 hidden_rate: int = 4,
-                 key_norm: bool = False):
+    def __init__(self, n_embd: int = 48, hidden_rate: int = 4, key_norm: bool = False):
         super().__init__()
         self.n_embd = n_embd
 
@@ -265,12 +242,11 @@ class ChannelMix(nn.Module):
         self.value = nn.Linear(hidden_sz, n_embd, bias=False)
 
     def forward(self, x, resolution):
-
         h, w = resolution
 
-        x = rearrange(x, "b (h w) c -> b c h w", h=h, w=w)
+        x = rearrange(x, 'b (h w) c -> b c h w', h=h, w=w)
         x = self.omni_shift(x)
-        x = rearrange(x, "b c h w -> b (h w) c")
+        x = rearrange(x, 'b c h w -> b (h w) c')
 
         k = self.key(x)
         k = torch.square(torch.relu(k))
@@ -283,13 +259,9 @@ class ChannelMix(nn.Module):
 
 
 class TransformerBlock(nn.Module):
-    def __init__(self,
-                 dim: int,
-                 window_size: int = 8,
-                 hidden_rate: int = 4,
-                 channel_norm: bool = False,
-                 attn_drop: float = 0.0,
-                 proj_drop: float = 0.0):
+    def __init__(
+        self, dim: int, window_size: int = 8, hidden_rate: int = 4, channel_norm: bool = False, attn_drop: float = 0.0, proj_drop: float = 0.0
+    ):
         super().__init__()
         self.rn1 = nn.RMSNorm(dim)
         self.rn2 = nn.RMSNorm(dim)
@@ -306,14 +278,15 @@ class TransformerBlock(nn.Module):
 
 class LBlock(nn.Module):
     def __init__(
-            self,
-            dim: int = 48,
-            n_block: int = 1,
-            window_size: int = 8,
-            hidden_rate: int = 4,
-            channel_norm: bool = False,
-            attn_drop: float = 0.0,
-            proj_drop: float = 0.0):
+        self,
+        dim: int = 48,
+        n_block: int = 1,
+        window_size: int = 8,
+        hidden_rate: int = 4,
+        channel_norm: bool = False,
+        attn_drop: float = 0.0,
+        proj_drop: float = 0.0,
+    ):
         super(LBlock, self).__init__()
         self.t_blocks = nn.ModuleList([TransformerBlock(dim, window_size, hidden_rate, channel_norm, attn_drop, proj_drop) for _ in range(n_block)])
         self.conv = ConvBlock(dim * 2, dim)
@@ -324,21 +297,23 @@ class LBlock(nn.Module):
         for t_block in self.t_blocks:
             x = t_block(x, resolution)
         x = torch.cat([shortcut, x], dim=-1)
-        x = rearrange(x, "b (h w) c -> b c h w", h=H, w=W)
+        x = rearrange(x, 'b (h w) c -> b c h w', h=H, w=W)
         x = self.conv(x)
-        x = rearrange(x, "b c h w -> b (h w) c")
+        x = rearrange(x, 'b c h w -> b (h w) c')
         return x
 
 
 class MBlock(nn.Module):
-    def __init__(self,
-            dim: int = 48,
-            n_block: int = 1,
-            window_size: int = 8,
-            hidden_rate: int = 4,
-            channel_norm: bool = False,
-            attn_drop: float = 0.0,
-            proj_drop: float = 0.0):
+    def __init__(
+        self,
+        dim: int = 48,
+        n_block: int = 1,
+        window_size: int = 8,
+        hidden_rate: int = 4,
+        channel_norm: bool = False,
+        attn_drop: float = 0.0,
+        proj_drop: float = 0.0,
+    ):
         super(MBlock, self).__init__()
         self.t_blocks = nn.ModuleList([TransformerBlock(dim, window_size, hidden_rate, channel_norm, attn_drop, proj_drop) for _ in range(n_block)])
         self.conv = ConvBlock(dim * 2, dim)
@@ -346,43 +321,44 @@ class MBlock(nn.Module):
     def forward(self, x):
         B, C, H, W = x.shape
         resolution = (H, W)
-        x = rearrange(x, "b c h w -> b (h w) c")
+        x = rearrange(x, 'b c h w -> b (h w) c')
         shortcut = x
         for t_block in self.t_blocks:
             x = t_block(x, resolution)
         x = torch.cat([shortcut, x], dim=-1)
-        x = rearrange(x, "b (h w) c -> b c h w", h=H, w=W)
+        x = rearrange(x, 'b (h w) c -> b c h w', h=H, w=W)
         x = self.conv(x)
         return x
 
 
 class LinearPipeline(nn.Module):
-    def __init__(self,
-                dim: int = 48,
-                num_blocks: tuple[int] = (4, 6, 6, 8),
-                window_size: int = 8,
-                hidden_rate: int = 4,
-                channel_norm: bool = False,
-                attn_drop: float = 0.0,
-                proj_drop: float = 0.0):
+    def __init__(
+        self,
+        dim: int = 48,
+        num_blocks: tuple[int] = (4, 6, 6, 8),
+        window_size: int = 8,
+        hidden_rate: int = 4,
+        channel_norm: bool = False,
+        attn_drop: float = 0.0,
+        proj_drop: float = 0.0,
+    ):
         super(LinearPipeline, self).__init__()
         self.att = nn.ModuleList([LBlock(dim, num_block, window_size, hidden_rate, channel_norm, attn_drop, proj_drop) for num_block in num_blocks])
 
     def forward(self, x):
         _, _, H, W = x.size()
         resolution = (H, W)
-        x = rearrange(x, "b c h w -> b (h w) c")
+        x = rearrange(x, 'b c h w -> b (h w) c')
         for attn in self.att:
             x = attn(x, resolution)
-        x = rearrange(x, "b (h w) c -> b c h w", h=H, w=W)
+        x = rearrange(x, 'b (h w) c -> b c h w', h=H, w=W)
         return x
 
 
 class Downsample(nn.Module):
     def __init__(self, n_feat: int = 48):
         super(Downsample, self).__init__()
-        self.body = nn.Sequential(nn.Conv2d(n_feat, n_feat // 2, kernel_size=3, stride=1, padding=1, bias=False),
-                                  nn.PixelUnshuffle(2))
+        self.body = nn.Sequential(nn.Conv2d(n_feat, n_feat // 2, kernel_size=3, stride=1, padding=1, bias=False), nn.PixelUnshuffle(2))
 
     def forward(self, x):
         return self.body(x)
@@ -392,22 +368,23 @@ class Upsample(nn.Module):
     def __init__(self, n_feat: int = 48):
         super(Upsample, self).__init__()
 
-        self.body = nn.Sequential(nn.Conv2d(n_feat, n_feat, kernel_size=3, stride=1, padding=1, bias=False),
-                                  nn.PixelShuffle(2))
+        self.body = nn.Sequential(nn.Conv2d(n_feat, n_feat, kernel_size=3, stride=1, padding=1, bias=False), nn.PixelShuffle(2))
 
     def forward(self, x):
         return self.body(x)
 
 
 class MetaPipeline(nn.Module):
-    def __init__(self,
-                dim: int = 48,
-                num_blocks: tuple[int] = (4, 6, 6, 8),
-                window_size: int = 8,
-                hidden_rate: int = 4,
-                channel_norm: bool = False,
-                attn_drop: float = 0.0,
-                proj_drop: float = 0.0):
+    def __init__(
+        self,
+        dim: int = 48,
+        num_blocks: tuple[int] = (4, 6, 6, 8),
+        window_size: int = 8,
+        hidden_rate: int = 4,
+        channel_norm: bool = False,
+        attn_drop: float = 0.0,
+        proj_drop: float = 0.0,
+    ):
         super(MetaPipeline, self).__init__()
         self.enc0 = nn.Sequential(*[MBlock(dim, num_blocks[0], window_size, hidden_rate, channel_norm, attn_drop, proj_drop)])
         self.enc1 = nn.Sequential(*[MBlock(dim * 2, num_blocks[1], window_size, hidden_rate, channel_norm, attn_drop, proj_drop)])
@@ -453,52 +430,50 @@ class MetaPipeline(nn.Module):
 
 
 class FlexNet(nn.Module):
-    def __init__(self,
-                 inp_channels: int = 3,
-                 out_channels: int = 3,
-                 scale: int = 4,
-                 dim: int = 64,
-                 num_blocks:  Sequence[int] = (6, 6, 6, 6, 6, 6),  # meta = (8,8,8,8), # linear = (6, 6, 6, 6, 6, 6),
-                 window_size: int = 8,
-                 hidden_rate: int = 4,
-                 channel_norm: bool = False,
-                 attn_drop: float = 0.0,
-                 proj_drop: float = 0.0,
-                 pipeline_type: str = "linear",
-                 upsampler: str = "ps"
-                 ):
+    def __init__(
+        self,
+        inp_channels: int = 3,
+        out_channels: int = 3,
+        scale: int = 4,
+        dim: int = 64,
+        num_blocks: Sequence[int] = (6, 6, 6, 6, 6, 6),  # meta = (8,8,8,8), # linear = (6, 6, 6, 6, 6, 6),
+        window_size: int = 8,
+        hidden_rate: int = 4,
+        channel_norm: bool = False,
+        attn_drop: float = 0.0,
+        proj_drop: float = 0.0,
+        pipeline_type: str = 'linear',
+        upsampler: str = 'ps',
+    ):
         super(FlexNet, self).__init__()
-        self.register_buffer("window_size", torch.tensor(window_size,dtype=torch.uint8))
+        self.register_buffer('window_size', torch.tensor(window_size, dtype=torch.uint8))
         self.pipeline_type = pipeline_type
         self.scale = scale
         self.short_cut = ConvBlock(inp_channels, dim)
         self.in_to_feat = nn.Conv2d(inp_channels, dim, 3, 1, 1)
-        self.pipeline = LinearPipeline(dim, num_blocks, window_size, hidden_rate, channel_norm, attn_drop, proj_drop) \
-            if pipeline_type == "linear" else MetaPipeline(dim, num_blocks, window_size, hidden_rate, channel_norm, attn_drop, proj_drop)
-        if upsampler == "n+c":
-            self.register_buffer("scale_factor", torch.tensor(scale, dtype=torch.uint8))
-            self.to_img = nn.Sequential(
-                nn.Conv2d(dim * 2, dim, 3, 1, 1),
-                InterpolateUpsampler(dim, out_channels, scale))
-        elif upsampler == "dys":
+        self.pipeline = (
+            LinearPipeline(dim, num_blocks, window_size, hidden_rate, channel_norm, attn_drop, proj_drop)
+            if pipeline_type == 'linear'
+            else MetaPipeline(dim, num_blocks, window_size, hidden_rate, channel_norm, attn_drop, proj_drop)
+        )
+        if upsampler == 'n+c':
+            self.register_buffer('scale_factor', torch.tensor(scale, dtype=torch.uint8))
+            self.to_img = nn.Sequential(nn.Conv2d(dim * 2, dim, 3, 1, 1), InterpolateUpsampler(dim, out_channels, scale))
+        elif upsampler == 'dys':
             self.to_img = DySample(dim * 2, out_channels, scale)
         else:
-            self.to_img = nn.Sequential(
-                nn.Conv2d(dim * 2, out_channels * (scale**2), 3, 1, 1),
-                nn.PixelShuffle(scale)
-                )
+            self.to_img = nn.Sequential(nn.Conv2d(dim * 2, out_channels * (scale**2), 3, 1, 1), nn.PixelShuffle(scale))
 
     def check_img_size(self, x, resolution):
         h, w = resolution
         scaled_size = self.window_size.to(int)
-        if self.pipeline_type == "meta":
+        if self.pipeline_type == 'meta':
             scaled_size *= 8
         mod_pad_h = (scaled_size - h % scaled_size) % scaled_size
         mod_pad_w = (scaled_size - w % scaled_size) % scaled_size
-        return F.pad(x, (0, mod_pad_w, 0, mod_pad_h), "reflect")
+        return F.pad(x, (0, mod_pad_w, 0, mod_pad_h), 'reflect')
 
     def forward(self, x):
-
         _, _, h, w = x.size()
         x = self.check_img_size(x, (h, w))
         short_cut = self.short_cut(x)
@@ -506,4 +481,4 @@ class FlexNet(nn.Module):
         x = self.pipeline(x)
         x = torch.cat([x, short_cut], dim=1)
         x = self.to_img(x)
-        return x[:, :, :h * self.scale, :w * self.scale]
+        return x[:, :, : h * self.scale, : w * self.scale]

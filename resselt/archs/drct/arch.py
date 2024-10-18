@@ -761,17 +761,19 @@ class DRCT(nn.Module):
         x = self.patch_unembed(x, x_size)
 
         return x
+
     def check_img_size(self, x, resolution):
         h, w = resolution
         scaled_size = self.window_size
         mod_pad_h = (scaled_size - h % scaled_size) % scaled_size
         mod_pad_w = (scaled_size - w % scaled_size) % scaled_size
-        return F.pad(x, (0, mod_pad_w, 0, mod_pad_h), "reflect")
+        return F.pad(x, (0, mod_pad_w, 0, mod_pad_h), 'reflect')
+
     def forward(self, x):
         self.mean = self.mean.type_as(x)
         x = (x - self.mean) * self.img_range
-        _,_,h,w = x.shape
-        x = self.check_img_size(x,(h,w))
+        _, _, h, w = x.shape
+        x = self.check_img_size(x, (h, w))
         if self.upsampler == 'pixelshuffle':
             # for classical SR
             x = self.conv_first(x)
@@ -781,4 +783,4 @@ class DRCT(nn.Module):
 
         x = x / self.img_range + self.mean
 
-        return x[:, :, :h * self.upscale, :w * self.upscale]
+        return x[:, :, : h * self.upscale, : w * self.upscale]
