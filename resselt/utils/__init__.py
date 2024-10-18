@@ -16,5 +16,5 @@ __all__ = [
     'pixelshuffle_scale',
     'dysample_scale',
     'get_pixelshuffle_params',
-    'UpscaleDType'
+    'UpscaleDType',
 ]
