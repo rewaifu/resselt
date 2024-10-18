@@ -31,7 +31,7 @@ class WrappedModel(Generic[T]):
         self.upscale = upscale
         self.name = name
 
-    def to(self, device: torch.device | torch.dtype):
+    def to(self, device: torch.device):
         self.model.to(device)
         return self
 

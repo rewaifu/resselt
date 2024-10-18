@@ -7,16 +7,17 @@ from .tiler import Tiler
 
 
 def upscale_with_tiler(
-    img: np.ndarray, tiler: Tiler, wrapped_model: WrappedModel, device: torch.device, upscale_tipe: UpscaleDType = UpscaleDType.F32
+    img: np.ndarray, tiler: Tiler, wrapped_model: WrappedModel, device: torch.device, upscale_type: UpscaleDType = UpscaleDType.F32
 ) -> np.ndarray:
     def _upscale() -> np.ndarray:
         tiles = tiler(img)
-        wrapped_model.to(upscale_tipe.value)
+        amp = upscale_type != UpscaleDType.F32
         for tile in tiles:
             try:
-                tile_tensor = image2tensor(tile.img, upscale_tipe.value).to(device).unsqueeze(0)
-                with torch.no_grad():
-                    output_tensor = wrapped_model(tile_tensor)
+                tile_tensor = image2tensor(tile.img).to(device).unsqueeze(0)
+                with torch.autocast(device_type=str(device), dtype=upscale_type.value, enabled=amp):
+                    with torch.inference_mode():
+                        output_tensor = wrapped_model(tile_tensor)
                 tile.img = tensor2image(output_tensor)
             except torch.cuda.OutOfMemoryError:
                 tiler.decrease_size()
