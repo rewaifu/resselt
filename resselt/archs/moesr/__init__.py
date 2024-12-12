@@ -11,73 +11,48 @@ class MoESRArch(Architecture[MoESR]):
         super().__init__(
             id='MoESR',
             detect=KeyCondition.has_all(
-                'gamma',
-                'metadata',
                 'in_to_dim.weight',
                 'in_to_dim.bias',
-                'blocks.0.gamma',
                 'blocks.0.blocks.0.gamma',
-                'blocks.0.blocks.0.token_mix.gamma',
-                'blocks.0.blocks.0.token_mix.norm.weight',
-                'blocks.0.blocks.0.token_mix.norm.bias',
-                'blocks.0.blocks.0.token_mix.fc1.weight',
-                'blocks.0.blocks.0.token_mix.fc1.bias',
-                'blocks.0.blocks.0.token_mix.conv.weight',
-                'blocks.0.blocks.0.token_mix.conv.bias',
-                'blocks.0.blocks.0.token_mix.fc2.weight',
-                'blocks.0.blocks.0.token_mix.fc2.bias',
-                'blocks.0.blocks.0.ffn.0.weight',
-                'blocks.0.blocks.0.ffn.0.bias',
-                'blocks.0.blocks.0.ffn.1.project_in.weight',
-                'blocks.0.blocks.0.ffn.1.project_in.bias',
-                'blocks.0.blocks.0.ffn.1.dwconv.weight',
-                'blocks.0.blocks.0.ffn.1.dwconv.bias',
-                'blocks.0.blocks.0.ffn.1.project_out.weight',
-                'blocks.0.blocks.0.ffn.1.project_out.bias',
-                'blocks.0.blocks.0.se.squeezing.0.weight',
-                'blocks.0.blocks.0.se.squeezing.0.bias',
+                'blocks.0.blocks.0.norm.weight',
+                'blocks.0.blocks.0.norm.bias',
+                'blocks.0.blocks.0.fc1.weight',
+                'blocks.0.blocks.0.fc1.bias',
+                'blocks.0.blocks.0.conv.dwconv_hw.weight',
+                'blocks.0.blocks.0.conv.dwconv_hw.bias',
+                'blocks.0.blocks.0.conv.dwconv_w.weight',
+                'blocks.0.blocks.0.conv.dwconv_w.bias',
+                'blocks.0.blocks.0.conv.dwconv_h.weight',
+                'blocks.0.blocks.0.conv.dwconv_h.bias',
+                'blocks.0.blocks.0.fc2.weight',
+                'blocks.0.blocks.0.fc2.bias',
+                'upscale.MetaUpsample',
             ),
         )
 
     def load(self, state: Mapping[str, object]) -> WrappedModel:
-        expansion_factor_shape = state['blocks.0.blocks.0.ffn.1.project_in.weight'].shape
-
-        upsampler = 'conv'
-        upsample_dim = 64
-        metadata = state['metadata']
-        in_ch = metadata[0].item()
-        out_ch = metadata[1].item()
-        scale = metadata[2].item()
-        dim = state['in_to_dim.weight'].shape[0]
+        upsample = ['conv', 'pixelshuffledirect', 'pixelshuffle', 'nearest+conv', 'dysample']
+        dim, in_ch = state['in_to_dim.weight'].shape[:2]
         n_blocks = get_seq_len(state, 'blocks')
-        n_block = get_seq_len(state, 'blocks.0.blocks') - 1
-        expansion_factor = expansion_factor_shape[0] / expansion_factor_shape[1]
-        expansion_esa_shape = state[f'blocks.0.blocks.{n_block}.conv1.weight'].shape
-        expansion_esa = expansion_esa_shape[0] / expansion_factor_shape[1]
-        if 'upscale.weight' in state:
-            upsampler = 'conv'
-        elif 'upscale.init_pos' in state:
-            upsampler = 'dys'
-        elif 'upscale.0.weight' in state:
-            if 'upscale.3.weight' in state:
-                upsampler = 'n+c'
-            elif 'upscale.2.weight' in state:
-                upsampler = 'ps'
-                upsample_dim = state['upscale.0.weight'].shape[0]
-            else:
-                upsampler = 'psd'
+        n_block = get_seq_len(state, 'blocks.0.blocks')
+        expansion_factor_shape = state['blocks.0.blocks.0.fc1.weight'].shape
+        expansion_factor = (expansion_factor_shape[0] / expansion_factor_shape[1]) / 2
+        expansion_msg_shape = state['blocks.0.msg.gated.0.fc1.weight'].shape
+        expansion_msg = (expansion_msg_shape[0] / expansion_msg_shape[1]) / 2
+        _, index, scale, _, out_ch, upsample_dim, _ = state['upscale.MetaUpsample']
+        upsampler = upsample[int(index)]
 
         model = MoESR(
             in_ch=in_ch,
-            out_ch=out_ch,
-            scale=scale,
+            out_ch=int(out_ch),
+            scale=int(scale),
             n_blocks=n_blocks,
             n_block=n_block,
             dim=dim,
             expansion_factor=expansion_factor,
-            expansion_esa=expansion_esa,
+            expansion_msg=expansion_msg,
             upsampler=upsampler,
-            upsample_dim=upsample_dim,
+            upsample_dim=int(upsample_dim),
         )
 
-        return WrappedModel(model=model, in_channels=in_ch, out_channels=out_ch, upscale=scale, name='MoESR')
+        return WrappedModel(model=model, in_channels=in_ch, out_channels=int(out_ch), upscale=int(scale), name='MoESR')
