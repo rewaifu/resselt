@@ -223,5 +223,5 @@ class MoESR(nn.Module):
         x = self.check_img_size(x, (h, w))
         x = self.in_to_dim(x)
         x = self.blocks(x) + x
-        x= self.upscale(x)[:, :, : h * self.scale, : w * self.scale]
+        x = self.upscale(x)[:, :, : h * self.scale, : w * self.scale]
         return x
