@@ -14,3 +14,4 @@
 
 /tests/assets
 /detect/
+/onnx-tensorrt/
