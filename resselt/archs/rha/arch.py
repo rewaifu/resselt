@@ -1,10 +1,10 @@
 import math
-from typing import Literal
+from typing import Literal, Sequence
 
 import numpy as np
-import torch.nn.functional as F
 import torch
-from torch import nn, Tensor
+import torch.nn.functional as F
+from torch import Tensor, nn
 
 
 SampleMods = Literal['conv', 'pixelshuffledirect', 'pixelshuffle', 'nearest+conv', 'dysample']
@@ -144,7 +144,12 @@ class UniUpsample(nn.Sequential):
                 raise ValueError(f'scale {scale} is not supported. Supported scales: 2^n and 3.')
             m.append(nn.Conv2d(in_dim, out_dim, 3, 1, 1))
         elif upsample == 'dysample':
-            m.append(DySample(in_dim, out_dim, scale, group))
+            if mid_dim != in_dim:
+                m.extend([nn.Conv2d(in_dim, mid_dim, 3, 1, 1), nn.LeakyReLU(inplace=True)])
+                dys_dim = mid_dim
+            else:
+                dys_dim = in_dim
+            m.append(DySample(dys_dim, out_dim, scale, group))
         else:
             raise ValueError(f'An invalid Upsample was selected. Please choose one of {SampleMods}')
         super().__init__(*m)
@@ -153,7 +158,7 @@ class UniUpsample(nn.Sequential):
             'MetaUpsample',
             torch.tensor(
                 [
-                    1,  # Block version, if you change something, please number from the end so that you can distinguish between authorized changes and third parties
+                    2,  # Block version, if you change something, please number from the end so that you can distinguish between authorized changes and third parties
                     list(SampleMods.__args__).index(upsample),  # UpSample method index
                     scale,
                     in_dim,
@@ -173,65 +178,128 @@ class LayerNorm(nn.Module):
         self.bias = nn.Parameter(torch.zeros(dim))
         self.eps = eps
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         u = x.mean(1, keepdim=True)
         s = (x - u).pow(2).mean(1, keepdim=True)
         x = (x - u) / torch.sqrt(s + self.eps)
         return self.weight[:, None, None] * x + self.bias[:, None, None]
 
 
-class LinAngularAttention(nn.Module):
+class FocusedLinearAttention(nn.Module):
+    r"""https://github.com/LeapLabTHU/FLatten-Transformer/blob/master/models/flatten_swin.py
+    Window based multi-head self attention (W-MSA) module with relative position bias.
+    It supports both of shifted and non-shifted window."""
+
     def __init__(
         self,
-        in_channels=64,
-        num_heads=8,
-        qkv_bias=True,
-        res_kernel_size=9,
-    ):
+        dim: int = 64,
+        window_size: int = 8,
+        num_heads: int = 8,
+        qkv_bias: bool = True,
+        attn_drop: float = 0.0,
+        proj_drop: float = 0.0,
+        focusing_factor: int = 3,
+        kernel_size: int = 5,
+    ) -> None:
         super().__init__()
-        assert in_channels % num_heads == 0, 'dim should be divisible by num_heads'
+        self.dim = dim
+        self.window_size = window_size  # Wh, Ww
         self.num_heads = num_heads
-        head_dim = in_channels // num_heads
-        self.scale = head_dim**-0.5
-        self.qkv = nn.Linear(in_channels, in_channels * 3, bias=qkv_bias)
-        self.proj = nn.Linear(in_channels, in_channels)
-        self.dconv = nn.Conv2d(
-            in_channels=self.num_heads,
-            out_channels=self.num_heads,
-            kernel_size=(res_kernel_size, 1),
-            padding=(res_kernel_size // 2, 0),
-            bias=False,
-            groups=self.num_heads,
+        head_dim = dim // num_heads
+        self.head_dim = head_dim
+
+        self.focusing_factor = focusing_factor
+        self.qkv = nn.Linear(dim, dim * 3, bias=qkv_bias)
+        self.attn_drop = nn.Dropout(attn_drop)
+        self.proj = nn.Linear(dim, dim)
+        self.proj_drop = nn.Dropout(proj_drop)
+
+        self.softmax = nn.Softmax(dim=-1)
+
+        self.dwc = nn.Conv2d(
+            in_channels=head_dim,
+            out_channels=head_dim,
+            kernel_size=kernel_size,
+            groups=head_dim,
+            padding=kernel_size // 2,
         )
+        self.scale = nn.Parameter(torch.zeros(size=(1, 1, dim)))
+        self.positional_encoding = nn.Parameter(torch.zeros(size=(1, window_size**2, dim)))
 
-    def forward(self, x):
-        N, C, h, w = x.shape
-        x = x.flatten(2).permute(0, 2, 1)
-        L = h * w
-        qkv = self.qkv(x).reshape(N, L, 3, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
-        q, k, v = qkv.unbind(0)  # make torchscript happy (cannot use tensor as tuple)
+    def window_partition(self, x: Tensor) -> (Tensor, int, int, int):
+        """
+        Args:
+            x: (B, C, H, W)
 
-        if self.training:
-            attn = (q * self.scale) @ k.transpose(-2, -1)
-            attn = attn.softmax(dim=-1)
-            mask = attn > 0.02  # note that the threshold could be different; adapt to your codebases.
-            sparse = mask * attn
+        Returns:
+            windows: (num_windows*B, window_size, window_size, C)
+        """
+        B, C, H, W = x.shape
+        x = x.view(
+            B,
+            C,
+            H // self.window_size,
+            self.window_size,
+            W // self.window_size,
+            self.window_size,
+        )
+        windows = x.permute(0, 2, 4, 3, 5, 1).contiguous().view(-1, self.window_size, self.window_size, C)
+        return windows, H, W, C
 
-        q = q / q.norm(dim=-1, keepdim=True)
-        k = k / k.norm(dim=-1, keepdim=True)
-        dconv_v = self.dconv(v)
+    def window_reverse(self, windows: Tensor, h: int, w: int) -> Tensor:
+        B = int(windows.shape[0] / (h * w / self.window_size / self.window_size))
+        x = windows.view(
+            B,
+            h // self.window_size,
+            w // self.window_size,
+            self.window_size,
+            self.window_size,
+            -1,
+        )
+        x = x.permute(0, 5, 1, 3, 2, 4).contiguous().view(B, -1, h, w)
+        return x
 
-        attn = k.transpose(-2, -1) @ v
+    def forward(self, x: Tensor) -> Tensor:
+        """
+        Args:
+            x: input features with shape of (num_windows*B, N, C)-
+        """
 
-        if self.training:
-            x = sparse @ v + 0.5 * v + 1.0 / torch.pi * q @ attn
-        else:
-            x = 0.5 * v + 1.0 / torch.pi * q @ attn
-        x = x / x.norm(dim=-1, keepdim=True)
-        x += dconv_v
-        x = x.transpose(1, 2).reshape(N, L, C)
+        x, h, w, C = self.window_partition(x)  # nW*B, window_size, window_size, C
+        x = x.view(-1, self.window_size * self.window_size, C)  # nW*B, window_size*window_size, C
+        B, N, C = x.shape
+        qkv = self.qkv(x).reshape(B, N, 3, C).permute(2, 0, 1, 3)
+        q, k, v = qkv.unbind(0)
+        k = k + self.positional_encoding
+        q = F.relu(q) + 1e-6
+        k = F.relu(k) + 1e-6
+        scale = F.softplus(self.scale)
+        q = q / scale
+        k = k / scale
+        q_norm = q.norm(dim=-1, keepdim=True)
+        k_norm = k.norm(dim=-1, keepdim=True)
+        q = q**self.focusing_factor
+        k = k**self.focusing_factor
+        q = (q / q.norm(dim=-1, keepdim=True)) * q_norm
+        k = (k / k.norm(dim=-1, keepdim=True)) * k_norm
+
+        q = q.reshape(B, N, self.num_heads, -1).permute(0, 2, 1, 3)
+        k = k.reshape(B, N, self.num_heads, -1).permute(0, 2, 1, 3)
+        v = v.reshape(B, N, self.num_heads, -1).permute(0, 2, 1, 3)
+
+        z = 1 / (q @ k.mean(dim=-2, keepdim=True).transpose(-2, -1) + 1e-6)
+        kv = (k.transpose(-2, -1) * (N**-0.5)) @ (v * (N**-0.5))
+        x = q @ kv * z
+
+        H = W = self.window_size
+        x = x.transpose(1, 2).reshape(B, N, C)
+        v = v.reshape(B * self.num_heads, H, W, self.head_dim).permute(0, 3, 1, 2)
+        x = x + self.dwc(v).reshape(B, C, N).permute(0, 2, 1)
+
         x = self.proj(x)
-        return x.permute(0, 2, 1).reshape(N, C, h, w)
+        x = self.proj_drop(x)
+        x = self.window_reverse(x, h, w)
+        return x
 
 
 class OmniShift(nn.Module):
@@ -270,7 +338,7 @@ class OmniShift(nn.Module):
             bias=True,
         )
 
-    def forward_train(self, x):
+    def forward_train(self, x: Tensor) -> Tensor:
         out1x1 = self.conv1x1(x)
         out3x3 = self.conv3x3(x)
         out5x5 = self.conv5x5(x)
@@ -308,8 +376,9 @@ class OmniShift(nn.Module):
         super().train(mode)
         if not mode:
             self.reparam_5x5()
+        return self
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         if self.training:
             out = self.forward_train(x)
         else:
@@ -317,17 +386,32 @@ class OmniShift(nn.Module):
         return out
 
 
-class HybridAttention(nn.Module):
-    def __init__(self, dim, down):
+class Shift(nn.Module):
+    def __init__(self, shift: int = 4) -> None:
         super().__init__()
-        self.att = nn.Sequential(nn.MaxPool2d(down, down), OmniShift(dim // 2), nn.Upsample(scale_factor=down, mode='bilinear'))
+        self.shift = shift
+
+    def forward(self, x: Tensor) -> Tensor:
+        return torch.roll(x, shifts=(self.shift, self.shift), dims=(2, 3))
+
+
+class HybridAttention(nn.Module):
+    def __init__(self, dim: int = 64, down: int = 8, shift: int = 0, window_size: int = 8) -> None:
+        super().__init__()
+        self.att = self.att = nn.Sequential(
+            nn.MaxPool2d(down, down) if down > 1 else nn.Identity(),
+            Shift(-shift) if shift else nn.Identity(),
+            FocusedLinearAttention(dim // 2, window_size),
+            Shift(shift) if shift else nn.Identity(),
+            nn.Upsample(scale_factor=down, mode='bilinear') if down > 1 else nn.Identity(),
+        )
         self.conv = OmniShift(dim // 2)
         self.aggr = nn.Sequential(nn.Conv2d(dim, dim, 1), nn.Mish(True))
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         x1, x2 = x.chunk(2, dim=1)
         x1 = self.conv(x1)
-        x2 = self.att(x2) + x1
+        x2 = self.att(x2)
         return self.aggr(torch.cat([x1, x2], dim=1)) * x
 
 
@@ -343,6 +427,8 @@ class GatedCNNBlock(nn.Module):
         expansion_ratio: float = 1.5,
         conv_ratio: float = 1.0,
         down: int = 1,
+        shift: int = 0,
+        window_size: int = 8,
     ) -> None:
         super().__init__()
         self.norm = LayerNorm(dim)
@@ -352,10 +438,10 @@ class GatedCNNBlock(nn.Module):
         conv_channels = int(conv_ratio * dim)
         self.split_indices = [hidden, hidden - conv_channels, conv_channels]
 
-        self.conv = HybridAttention(dim, down)
+        self.conv = HybridAttention(dim, down, shift, window_size)
         self.fc2 = nn.Conv2d(hidden, dim, 3, 1, 1)
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         shortcut = x
         x = self.norm(x)
         g, i, c = torch.split(self.fc1(x), self.split_indices, dim=1)
@@ -365,14 +451,32 @@ class GatedCNNBlock(nn.Module):
 
 
 class GatedGroup(nn.Module):
-    def __init__(self, res_blocks, dim, down_sample, expansion_ratio):
+    def __init__(
+        self,
+        res_blocks: int = 6,
+        dim: int = 64,
+        down_sample: int = 4,
+        expansion_ratio: float = 1.5,
+        window_size: int = 8,
+    ) -> None:
         super().__init__()
         self.register_buffer('down_sample', torch.tensor(down_sample, dtype=torch.uint8))
+
         self.body = nn.Sequential(
-            *[GatedCNNBlock(dim, down=down_sample, expansion_ratio=expansion_ratio) for _ in range(res_blocks)] + [HybridAttention(dim, down_sample)]
+            *[
+                GatedCNNBlock(
+                    dim,
+                    down=down_sample,
+                    expansion_ratio=expansion_ratio,
+                    shift=0 if (i % 2 == 0) else window_size // 2,
+                    window_size=window_size,
+                )
+                for i in range(res_blocks)
+            ]
+            + [OmniShift(dim), nn.Conv2d(dim, dim, kernel_size=1)]
         )
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         return self.body(x) + x
 
 
@@ -381,18 +485,22 @@ class RHA(nn.Module):
 
     def __init__(
         self,
-        dim=64,
-        scale=4,
-        in_ch=3,
-        out_ch=3,
-        mid_dim=64,
-        down_list=(8, 4),
-        expansion_ratio=1.5,
-        group_blocks=4,
-        res_blocks=6,
+        dim: int = 64,
+        scale: int = 4,
+        in_ch: int = 3,
+        out_ch: int = 3,
+        mid_dim: int = 32,
+        down_list: Sequence[int] = (
+            8,
+            4,
+        ),
+        expansion_ratio: float = 1.5,
+        group_blocks: int = 4,
+        res_blocks: int = 6,
         upsample: SampleMods = 'pixelshuffledirect',
-        unshuffle_mod=False,
-    ):
+        unshuffle_mod: bool = False,
+        window_size: int = 8,
+    ) -> None:
         super().__init__()
         unshuffle = 0
         if scale < 4 and unshuffle_mod:
@@ -401,16 +509,31 @@ class RHA(nn.Module):
             unshuffle = 4 // scale
             self.register_buffer('unshuffle', torch.tensor(unshuffle, dtype=torch.uint8))
             scale = 4
-        self.pad = unshuffle if unshuffle > 0 else 1
-        self.pad *= np.max(down_list)
+
+        self.pad: int = unshuffle if unshuffle > 0 else 1
+        self.pad *= np.max(down_list) * window_size
         self.to_feat = (
-            nn.Sequential(nn.PixelUnshuffle(unshuffle), nn.Conv2d(in_ch * unshuffle**2, dim, 3, 1, 1))
+            nn.Sequential(
+                nn.PixelUnshuffle(unshuffle),
+                nn.Conv2d(in_ch * unshuffle**2, dim, 3, 1, 1),
+            )
             if unshuffle_mod
             else (nn.Conv2d(in_ch, dim, 3, 1, 1))
         )
-        down_sample_len = len(down_list)
 
-        self.body = nn.Sequential(*[GatedGroup(res_blocks, dim, down_list[i % down_sample_len], expansion_ratio) for i in range(group_blocks)])
+        down_sample_len = len(down_list)
+        self.body = nn.Sequential(
+            *[
+                GatedGroup(
+                    res_blocks,
+                    dim,
+                    down_list[i % down_sample_len],
+                    expansion_ratio,
+                    window_size,
+                )
+                for i in range(group_blocks)
+            ]
+        )
         self.scale = scale
         self.to_img = UniUpsample(upsample, scale, dim, out_ch, mid_dim)
         self.apply(self._init_weights)
@@ -422,13 +545,19 @@ class RHA(nn.Module):
             if m.bias is not None:
                 nn.init.constant_(m.bias, 0)
 
-    def check_img_size(self, x, resolution: tuple[int, int]):
+    def load_state_dict(self, state_dict, *args, **kwargs):
+        state_dict['to_img.MetaUpsample'] = self.to_img.MetaUpsample
+        if 'unshuffle' in state_dict:
+            state_dict['unshuffle'] = self.unshuffle
+        return super().load_state_dict(state_dict, *args, **kwargs)
+
+    def check_img_size(self, x: Tensor, resolution: tuple[int, int]) -> Tensor:
         scaled_size = self.pad
         mod_pad_h = (scaled_size - resolution[0] % scaled_size) % scaled_size
         mod_pad_w = (scaled_size - resolution[1] % scaled_size) % scaled_size
         return F.pad(x, (0, mod_pad_w, 0, mod_pad_h), 'reflect')
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         b, c, h, w = x.shape
         x = self.check_img_size(x, (h, w))
         x = self.to_feat(x)

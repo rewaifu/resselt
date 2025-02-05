@@ -1,3 +1,4 @@
+import math
 from typing import Mapping
 
 from .arch import RHA
@@ -16,18 +17,14 @@ class RHAArch(Architecture[RHA]):
                 'body.0.body.0.norm.bias',
                 'body.0.body.0.fc1.weight',
                 'body.0.body.0.fc1.bias',
-                'body.0.body.0.conv.att.1.alpha1',
-                'body.0.body.0.conv.att.1.alpha2',
-                'body.0.body.0.conv.att.1.alpha3',
-                'body.0.body.0.conv.att.1.alpha4',
-                'body.0.body.0.conv.att.1.conv1x1.weight',
-                'body.0.body.0.conv.att.1.conv1x1.bias',
-                'body.0.body.0.conv.att.1.conv3x3.weight',
-                'body.0.body.0.conv.att.1.conv3x3.bias',
-                'body.0.body.0.conv.att.1.conv5x5.weight',
-                'body.0.body.0.conv.att.1.conv5x5.bias',
-                'body.0.body.0.conv.att.1.conv5x5_reparam.weight',
-                'body.0.body.0.conv.att.1.conv5x5_reparam.bias',
+                'body.0.body.0.conv.att.2.scale',
+                'body.0.body.0.conv.att.2.positional_encoding',
+                'body.0.body.0.conv.att.2.qkv.weight',
+                'body.0.body.0.conv.att.2.qkv.bias',
+                'body.0.body.0.conv.att.2.proj.weight',
+                'body.0.body.0.conv.att.2.proj.bias',
+                'body.0.body.0.conv.att.2.dwc.weight',
+                'body.0.body.0.conv.att.2.dwc.bias',
                 'body.0.body.0.conv.conv.alpha1',
                 'body.0.body.0.conv.conv.alpha2',
                 'body.0.body.0.conv.conv.alpha3',
@@ -59,15 +56,15 @@ class RHAArch(Architecture[RHA]):
             in_ch //= unshuffle**2
         else:
             dim, in_ch, _, _ = state['to_feat.weight'].shape
-
+        in_ch //= unshuffle**2
         group_blocks = get_seq_len(state, 'body')
-        res_blocks = get_seq_len(state, 'body.0.body') - 1
+        res_blocks = get_seq_len(state, 'body.0.body') - 2
         down_list = [state[f'body.{index}.down_sample'].item() for index in range(group_blocks)]
         expansion_ratio = state['body.0.body.0.fc1.weight'].shape[0] / 2 / dim
         _, index, scale, _, out_ch, upsample_dim, _ = [value.item() for value in state['to_img.MetaUpsample']]
         upsampler = upsample[int(index)]
         scale //= unshuffle
-
+        window_size = math.isqrt(state['body.0.body.0.conv.att.2.positional_encoding'].shape[1])
         model = RHA(
             dim=dim,
             scale=scale,
@@ -80,6 +77,7 @@ class RHAArch(Architecture[RHA]):
             res_blocks=res_blocks,
             upsample=upsampler,
             unshuffle_mod=unshuffle_mod,
+            window_size=window_size,
         )
 
         return WrappedModel(model=model, in_channels=in_ch, out_channels=out_ch, upscale=scale, name='RHA')
