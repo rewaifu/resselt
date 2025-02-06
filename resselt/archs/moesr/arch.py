@@ -6,7 +6,7 @@ from torch import nn
 from torch.nn.init import trunc_normal_
 from torch.nn import functional as F
 
-from resselt.archs.utils import DySample
+from ...utilities import DySample
 
 SampleMods = Literal['conv', 'pixelshuffledirect', 'pixelshuffle', 'nearest+conv', 'dysample']
 

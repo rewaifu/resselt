@@ -5,7 +5,7 @@ from torch import einsum, nn
 import torch
 import torch.nn.functional as F
 
-from resselt.archs.utils import pad_to_multiple
+from ...utilities import pad_to_multiple
 
 
 def moment(x, dim=(2, 3), k=2):

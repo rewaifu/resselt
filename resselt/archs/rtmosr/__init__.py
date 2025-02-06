@@ -2,9 +2,8 @@ import math
 from typing import Mapping
 
 from .arch import RTMoSR
-from resselt.utils import get_seq_len
-from resselt.registry.key_condition import KeyCondition
-from resselt.registry.architecture import WrappedModel, Architecture
+from ...factory import Architecture, KeyCondition
+from ...utilities.state_dict import get_seq_len
 
 
 class RTMoSRArch(Architecture[RTMoSR]):
@@ -86,7 +85,7 @@ class RTMoSRArch(Architecture[RTMoSR]):
             ),
         )
 
-    def load(self, state: Mapping[str, object]) -> WrappedModel:
+    def load(self, state: Mapping[str, object]):
         unshuffle = False
         if 'to_feat.1.alpha' in state:
             unshuffle = True
@@ -102,4 +101,4 @@ class RTMoSRArch(Architecture[RTMoSR]):
 
         model = RTMoSR(scale=scale, dim=dim, ffn_expansion=ffn, n_blocks=n_blocks, unshuffle_mod=unshuffle, dccm=dccm, se=se)
 
-        return WrappedModel(model=model, in_channels=3, out_channels=3, upscale=int(2), name='RTMoSR')
+        return self._enhance_model(model=model, in_channels=3, out_channels=3, upscale=int(2), name='RTMoSR')

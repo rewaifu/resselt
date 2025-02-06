@@ -1,9 +1,8 @@
 from typing import Mapping
 
 from .arch import SRVGGNetCompact
-from resselt.utils import get_seq_len, pixelshuffle_scale
-from resselt.registry.key_condition import KeyCondition
-from resselt.registry.architecture import WrappedModel, Architecture
+from ...factory import Architecture, KeyCondition
+from ...utilities.state_dict import get_seq_len, pixelshuffle_scale
 
 
 class CompactArch(Architecture[SRVGGNetCompact]):
@@ -16,7 +15,7 @@ class CompactArch(Architecture[SRVGGNetCompact]):
             ),
         )
 
-    def load(self, state_dict: Mapping[str, object]) -> WrappedModel:
+    def load(self, state_dict: Mapping[str, object]):
         state = state_dict
 
         highest_num = get_seq_len(state, 'body') - 1
@@ -36,4 +35,4 @@ class CompactArch(Architecture[SRVGGNetCompact]):
             upscale=scale,
         )
 
-        return WrappedModel(model=model, in_channels=in_nc, out_channels=in_nc, upscale=scale, name='Compact')
+        return self._enhance_model(model=model, in_channels=in_nc, out_channels=in_nc, upscale=scale, name='Compact')

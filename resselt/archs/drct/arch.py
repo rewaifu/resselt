@@ -3,7 +3,7 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from resselt.archs.utils import to_2tuple
+from ...utilities import to_2tuple
 
 
 class ChannelAttention(nn.Module):
@@ -610,7 +610,7 @@ class Upsample(nn.Sequential):
             m.append(nn.Conv2d(num_feat, 9 * num_feat, 3, 1, 1))
             m.append(nn.PixelShuffle(3))
         else:
-            raise ValueError(f'scale {scale} is not supported. ' 'Supported scales: 2^n and 3.')
+            raise ValueError(f'scale {scale} is not supported. Supported scales: 2^n and 3.')
         super().__init__(*m)
 
 
