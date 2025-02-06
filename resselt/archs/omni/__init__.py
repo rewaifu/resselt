@@ -13,7 +13,7 @@ warnings.filterwarnings('ignore')
 class OmniArch(Architecture[OmniSR]):
     def __init__(self):
         super().__init__(
-            id='OmniSR',
+            uid='OmniSR',
             detect=KeyCondition.has_all(
                 'residual_layer.0.residual_layer.0.layer.0.fn.0.weight',
                 'input.weight',

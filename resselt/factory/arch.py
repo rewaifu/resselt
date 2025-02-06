@@ -21,8 +21,8 @@ class ModelMetadata:
 
 
 class Architecture(ABC, Generic[T]):
-    def __init__(self, id: str, detect: KeyCondition):
-        self.id = id
+    def __init__(self, uid: str, detect: KeyCondition):
+        self.id = uid
         self._detect = detect
 
     def detect(self, state_dict: Mapping[str, object]) -> bool:

@@ -9,7 +9,7 @@ from ...utilities.state_dict import get_seq_len, pixelshuffle_scale, dysample_sc
 class MoSRArch(Architecture[MoSR]):
     def __init__(self):
         super().__init__(
-            id='MoSR',
+            uid='MoSR',
             detect=KeyCondition.has_all(
                 'gblocks.0.weight',
                 'gblocks.0.bias',

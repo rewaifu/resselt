@@ -9,7 +9,7 @@ from ...utilities.state_dict import get_seq_len
 class RHAArch(Architecture[RHA]):
     def __init__(self):
         super().__init__(
-            id='RHA',
+            uid='RHA',
             detect=KeyCondition.has_all(
                 'body.0.down_sample',
                 'body.0.body.0.norm.weight',

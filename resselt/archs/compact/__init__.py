@@ -8,7 +8,7 @@ from ...utilities.state_dict import get_seq_len, pixelshuffle_scale
 class CompactArch(Architecture[SRVGGNetCompact]):
     def __init__(self):
         super().__init__(
-            id='Compact',
+            uid='Compact',
             detect=KeyCondition.has_all(
                 'body.0.weight',
                 'body.1.weight',

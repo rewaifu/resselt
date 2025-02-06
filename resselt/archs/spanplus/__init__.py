@@ -8,7 +8,7 @@ from ...utilities.state_dict import get_seq_len, pixelshuffle_scale, dysample_sc
 class SpanPlusArch(Architecture[SpanPlus]):
     def __init__(self):
         super().__init__(
-            id='spanplus',
+            uid='spanplus',
             detect=KeyCondition.has_all('feats.0.eval_conv.weight'),
         )
 

@@ -9,7 +9,7 @@ from ...utilities.state_dict import get_seq_len
 class FlexNetArch(Architecture[FlexNet]):
     def __init__(self):
         super().__init__(
-            id='FlexNet',
+            uid='FlexNet',
             detect=KeyCondition.has_all(
                 'short_cut.block.0.weight',
                 'short_cut.block.0.bias',

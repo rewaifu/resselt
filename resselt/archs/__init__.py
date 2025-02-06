@@ -4,7 +4,7 @@ import os
 from ..factory import Architecture
 from ..registry import Registry
 
-_internal_registry = Registry()
+internal_registry = Registry()
 base_dir = os.path.dirname(__file__)
 base_class = Architecture
 
@@ -25,4 +25,4 @@ for root, dirs, files in os.walk(base_dir):
                     globals()[attribute_name] = attribute
 
                     instance = attribute()
-                    _internal_registry.add(instance)
+                    internal_registry.add(instance)

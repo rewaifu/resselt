@@ -124,7 +124,7 @@ def _to_old_arch(state: Mapping[str, object]) -> Mapping[str, object]:
 class ESRGANArch(Architecture[RRDBNet]):
     def __init__(self) -> None:
         super().__init__(
-            id='ESRGAN',
+            uid='ESRGAN',
             detect=KeyCondition.has_any(
                 KeyCondition.has_all(
                     'model.0.weight',

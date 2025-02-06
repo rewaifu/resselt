@@ -10,7 +10,7 @@ from ...utilities.state_dict import get_seq_len, get_pixelshuffle_params, pixels
 class ATDArch(Architecture[ATD]):
     def __init__(self):
         super().__init__(
-            id='ATD',
+            uid='ATD',
             detect=KeyCondition.has_all(
                 'relative_position_index_SA',
                 'conv_first.weight',

@@ -9,7 +9,7 @@ from ...utilities.state_dict import get_seq_len, get_pixelshuffle_params
 class MoSRArch(Architecture[DRCT]):
     def __init__(self):
         super().__init__(
-            id='DRCT',
+            uid='DRCT',
             detect=KeyCondition.has_all(
                 'conv_first.weight',
                 'conv_first.bias',

@@ -8,7 +8,7 @@ from ...utilities.state_dict import get_seq_len
 class GateRArch(Architecture[GateR]):
     def __init__(self):
         super().__init__(
-            id='GateR',
+            uid='GateR',
             detect=KeyCondition.has_all(
                 'in_to_dim.weight',
                 'in_to_dim.bias',

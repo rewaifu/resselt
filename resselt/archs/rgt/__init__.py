@@ -39,7 +39,7 @@ def _get_split_size(state_dict: Mapping[str, object]) -> tuple[int, int]:
 class RGTArch(Architecture[RGT]):
     def __init__(self):
         super().__init__(
-            id='RGT',
+            uid='RGT',
             detect=KeyCondition.has_all(
                 'conv_first.weight',
                 'before_RG.1.weight',

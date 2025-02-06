@@ -9,7 +9,7 @@ from ...utilities.state_dict import get_seq_len, pixelshuffle_scale
 class eimnArch(Architecture[eimn]):
     def __init__(self):
         super().__init__(
-            id='eimn',
+            uid='eimn',
             detect=KeyCondition.has_all(
                 'head.0.weight',
                 'head.0.bias',

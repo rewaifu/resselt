@@ -9,7 +9,7 @@ from ...utilities.state_dict import get_seq_len
 class RTMoSRArch(Architecture[RTMoSR]):
     def __init__(self):
         super().__init__(
-            id='RTMoSR',
+            uid='RTMoSR',
             detect=KeyCondition.has_all(
                 'body.0.norm.scale',
                 'body.0.norm.offset',

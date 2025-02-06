@@ -9,7 +9,7 @@ from ...utilities.state_dict import get_seq_len, pixelshuffle_scale
 class DatArch(Architecture[DAT]):
     def __init__(self):
         super().__init__(
-            id='dat',
+            uid='dat',
             detect=KeyCondition.has_all(
                 'conv_first.weight',
                 'before_RG.1.weight',

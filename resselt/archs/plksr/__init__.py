@@ -11,7 +11,7 @@ _PLKSR = Union[plksr, realplksr]
 class PLKSRArch(Architecture[_PLKSR]):
     def __init__(self):
         super().__init__(
-            id='PLKSR',
+            uid='PLKSR',
             detect=KeyCondition.has_all(
                 'feats.0.weight',
                 KeyCondition.has_any(

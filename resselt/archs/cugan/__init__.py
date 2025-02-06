@@ -11,7 +11,7 @@ _CUGAN = Union[UpCunet2x, UpCunet3x, UpCunet4x, UpCunet2x_fast]
 class CUGANArch(Architecture[_CUGAN]):
     def __init__(self):
         super().__init__(
-            id='CuGAN',
+            uid='CuGAN',
             detect=KeyCondition.has_all(
                 'unet1.conv1.conv.0.weight',
                 'unet1.conv1.conv.2.weight',

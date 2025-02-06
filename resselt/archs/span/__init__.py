@@ -10,7 +10,7 @@ from ...utilities.state_dict import pixelshuffle_scale
 class SPANArch(Architecture[SPAN]):
     def __init__(self):
         super().__init__(
-            id='SPAN',
+            uid='SPAN',
             detect=KeyCondition.has_all(
                 'conv_1.sk.weight',
                 'block_1.c1_r.sk.weight',

@@ -9,7 +9,7 @@ from ...utilities.state_dict import get_seq_len, get_pixelshuffle_params
 class SwinIRArch(Architecture[SwinIR]):
     def __init__(self):
         super().__init__(
-            id='SwinIR',
+            uid='SwinIR',
             detect=KeyCondition.has_all(
                 'layers.0.residual_group.blocks.0.norm1.weight',
                 'conv_first.weight',
