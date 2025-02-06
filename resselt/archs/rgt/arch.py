@@ -8,7 +8,7 @@ from einops import rearrange
 from einops.layers.torch import Rearrange
 from torch.nn import functional as F
 
-from resselt.archs.utils import DropPath
+from resselt.utilities import DropPath
 
 
 def img2windows(img, H_sp, W_sp):
