@@ -22,6 +22,11 @@ name = "pytorch-cu124"
 url = "https://download.pytorch.org/whl/cu124"
 explicit = true
 
+[[tool.uv.index]]
+name = "yor"
+url = "https://pypi.yor.ovh/simple/"
+publish-url = "https://pypi.yor.ovh/simple/"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
