@@ -1,26 +1,26 @@
 from typing import Mapping
 
-from .archs import _internal_registry
+from .archs import internal_registry
 
 
 def add(arch):
     """Register a new architecture."""
-    return _internal_registry.add(arch)
+    return internal_registry.add(arch)
 
 
 def get(id: str):
     """Get architecture by ID."""
-    return _internal_registry.get(id)
+    return internal_registry.get(id)
 
 
-def load_from_file(path: str, strict: bool = True):
+def load_from_file(path: str):
     """Detect and load architecture from state dict."""
-    return _internal_registry.load_from_file(path, strict)
+    return internal_registry.load_from_file(path)
 
 
 def load_from_state_dict(state_dict: Mapping[str, object]):
     """Detect and load architecture from state dict."""
-    return _internal_registry.load_from_state_dict(state_dict)
+    return internal_registry.load_from_state_dict(state_dict)
 
 
 __all__ = ['add', 'get', 'load_from_file', 'load_from_state_dict']
