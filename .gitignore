@@ -1,7 +1,3 @@
-# Pixi
-.pixi
-*.egg-info
-
 # IDE's
 /.idea
 

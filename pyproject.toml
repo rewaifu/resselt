@@ -1,9 +1,9 @@
 [project]
 name = "resselt"
 version = "2.0.0"
-description = "Package for recognizing and executing Image Super-Resolution PyTorch architectures"
+description = "Image Super-Resolution PyTorch architectures loader"
 readme = "README.md"
-authors = [{  name = "umzi" }]
+authors = [{ name = "umzi" }]
 requires-python = ">=3.12"
 dependencies = [
   "einops>=0.8.0",
