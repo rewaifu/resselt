@@ -25,7 +25,7 @@ explicit = true
 [[tool.uv.index]]
 name = "yor"
 url = "https://pypi.yor.ovh/simple/"
-publish-url = "https://pypi.yor.ovh/simple/"
+publish-url = "https://pypi.yor.ovh/"
 
 [build-system]
 requires = ["hatchling"]
