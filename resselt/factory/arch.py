@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+
 import torch
 from abc import ABC, abstractmethod
 from typing import Generic, TypeVar, Mapping
@@ -7,6 +9,7 @@ from .key_condition import KeyCondition
 T = TypeVar('T', bound=torch.nn.Module, covariant=True)
 
 
+@dataclass
 class ModelMetadata:
     """Mixin for adding SR model specific attributes and methods"""
 
@@ -14,10 +17,6 @@ class ModelMetadata:
     out_channels: int
     upscale: int
     name: str
-
-    def parameters_info(self) -> tuple[str, int, int, int]:
-        """Return name, in_channels, out_channels"""
-        return self.name, self.in_channels, self.out_channels, self.upscale
 
 
 class Architecture(ABC, Generic[T]):
@@ -33,11 +32,5 @@ class Architecture(ABC, Generic[T]):
         raise NotImplementedError
 
     def _enhance_model(self, model: T, in_channels: int, out_channels: int, upscale: int, name) -> T:
-        model.in_channels = in_channels
-        model.out_channels = out_channels
-        model.upscale = upscale
-        model.name = name
-
-        model.parameters_info = ModelMetadata.parameters_info.__get__(model)
-
+        model.parameters_info = ModelMetadata(name=name, in_channels=in_channels, out_channels=out_channels, upscale=upscale)
         return model
