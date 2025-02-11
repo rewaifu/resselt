@@ -160,7 +160,7 @@ class Upsample(nn.Module):
 
 
 class GateR(nn.Module):
-    def __init__(self, dim=48, in_ch=3, num_blocks=(3, 6, 6, 10, 6, 6, 3)):
+    def __init__(self, dim=48, in_ch=3, num_blocks=(3, 6, 6, 10, 6, 6, 3), latent_att=False):
         super().__init__()
         self.in_to_dim = nn.Conv2d(in_ch, dim, 3, 1, 1)
 
@@ -168,7 +168,7 @@ class GateR(nn.Module):
         self.enc1 = nn.Sequential(Downsample(dim), Blocks(dim * 2, num_blocks[1]))
         self.enc2 = nn.Sequential(Downsample(dim * 2), Blocks(dim * 4, num_blocks[2]))
 
-        self.latent = nn.Sequential(Downsample(dim * 4), Blocks(dim * 8, num_blocks[3], True), Upsample(dim * 8))
+        self.latent = nn.Sequential(Downsample(dim * 4), Blocks(dim * 8, num_blocks[3], latent_att), Upsample(dim * 8))
 
         self.dec0 = nn.Sequential(nn.Conv2d(dim * 8, dim * 4, 1), Blocks(dim * 4, num_blocks[4]), Upsample(dim * 4))
         self.dec1 = nn.Sequential(nn.Conv2d(dim * 4, dim * 2, 1), Blocks(dim * 2, num_blocks[5]), Upsample(dim * 2))
