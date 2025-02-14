@@ -11,7 +11,7 @@ from .factory import Architecture
 from .utilities.state_dict import canonicalize_state_dict
 
 
-class ArchNotFound(Exception):
+class ArchitectureNotFound(Exception):
     pass
 
 
@@ -73,7 +73,7 @@ class Registry:
     def get(self, uid: str) -> Architecture:
         architecture = self.store[uid]
         if not architecture:
-            raise ArchNotFound
+            raise ArchitectureNotFound
         return architecture
 
     def load_from_file(self, path: str) -> T:
@@ -113,4 +113,4 @@ class Registry:
                 model.load_state_dict(state_dict)
                 return model
 
-        raise ArchNotFound
+        raise ArchitectureNotFound
