@@ -1,6 +1,6 @@
 [project]
 name = "resselt"
-version = "2.1.0"
+version = "2.1.2"
 description = "Image Super-Resolution PyTorch architectures loader"
 readme = "README.md"
 authors = [{ name = "umzi" }]
