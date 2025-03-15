@@ -2,15 +2,14 @@ import math
 from typing import Mapping
 
 from .arch import DAT
-from resselt.utils import get_seq_len, pixelshuffle_scale
-from resselt.registry.key_condition import KeyCondition
-from resselt.registry.architecture import WrappedModel, Architecture
+from ...factory import Architecture, KeyCondition
+from ...utilities.state_dict import get_seq_len, pixelshuffle_scale
 
 
 class DatArch(Architecture[DAT]):
     def __init__(self):
         super().__init__(
-            id='dat',
+            uid='dat',
             detect=KeyCondition.has_all(
                 'conv_first.weight',
                 'before_RG.1.weight',
@@ -40,7 +39,7 @@ class DatArch(Architecture[DAT]):
             ),
         )
 
-    def load(self, state_dict: Mapping[str, object]) -> WrappedModel:
+    def load(self, state_dict: Mapping[str, object]):
         img_size = 64  # cannot be deduced from state dict in general
         split_size = [2, 4]
         upscale = 2
@@ -103,4 +102,4 @@ class DatArch(Architecture[DAT]):
             upsampler=upsampler,
         )
 
-        return WrappedModel(model=model, in_channels=in_chans, out_channels=in_chans, upscale=upscale, name='DAT')
+        return self._enhance_model(model=model, in_channels=in_chans, out_channels=in_chans, upscale=upscale, name='DAT')

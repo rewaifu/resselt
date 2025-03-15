@@ -2,7 +2,7 @@ import torch
 from torch import nn
 from torch.nn.init import trunc_normal_
 
-from resselt.archs.utils import DySample
+from resselt.utilities import DySample
 
 
 class GPS(nn.Module):

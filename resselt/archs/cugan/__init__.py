@@ -2,8 +2,8 @@ from typing import Mapping, Union, Literal
 
 from .arch import UpCunet2x, UpCunet2x_fast, UpCunet3x, UpCunet4x
 import torch
-from resselt.registry.key_condition import KeyCondition
-from resselt.registry.architecture import WrappedModel, Architecture
+
+from ...factory import Architecture, KeyCondition
 
 _CUGAN = Union[UpCunet2x, UpCunet3x, UpCunet4x, UpCunet2x_fast]
 
@@ -11,7 +11,7 @@ _CUGAN = Union[UpCunet2x, UpCunet3x, UpCunet4x, UpCunet2x_fast]
 class CUGANArch(Architecture[_CUGAN]):
     def __init__(self):
         super().__init__(
-            id='CuGAN',
+            uid='CuGAN',
             detect=KeyCondition.has_all(
                 'unet1.conv1.conv.0.weight',
                 'unet1.conv1.conv.2.weight',
@@ -35,7 +35,7 @@ class CUGANArch(Architecture[_CUGAN]):
             ),
         )
 
-    def load(self, state_dict: Mapping[str, object]) -> WrappedModel:
+    def load(self, state_dict: Mapping[str, object]):
         scale: Literal[2, 3, 4]
         in_channels: int
         out_channels: int
@@ -72,4 +72,4 @@ class CUGANArch(Architecture[_CUGAN]):
             out_channels = state_dict['unet2.conv_bottom.weight'].shape[0]
             model = UpCunet2x(in_channels=in_channels, out_channels=out_channels, pro=pro)
 
-        return WrappedModel(model=model, in_channels=in_channels, out_channels=out_channels, upscale=scale, name='CUGAN')
+        return self._enhance_model(model=model, in_channels=in_channels, out_channels=out_channels, upscale=scale, name='CUGAN')

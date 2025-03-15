@@ -2,15 +2,14 @@ import re
 from typing import Mapping
 
 from .arch import eimn
-from resselt.utils import get_seq_len, pixelshuffle_scale
-from resselt.registry.key_condition import KeyCondition
-from resselt.registry.architecture import WrappedModel, Architecture
+from ...factory import KeyCondition, Architecture
+from ...utilities.state_dict import get_seq_len, pixelshuffle_scale
 
 
 class eimnArch(Architecture[eimn]):
     def __init__(self):
         super().__init__(
-            id='eimn',
+            uid='eimn',
             detect=KeyCondition.has_all(
                 'head.0.weight',
                 'head.0.bias',
@@ -63,7 +62,7 @@ class eimnArch(Architecture[eimn]):
             ),
         )
 
-    def load(self, state: Mapping[str, object]) -> WrappedModel:
+    def load(self, state: Mapping[str, object]):
         pattern = r'block(\d+)'
         numbers = [int(re.search(pattern, s).group(1)) for s in state.keys() if re.search(pattern, s)]
         num_stages = max(numbers)
@@ -81,4 +80,4 @@ class eimnArch(Architecture[eimn]):
             num_stages=num_stages,
         )
 
-        return WrappedModel(model=model, in_channels=3, out_channels=3, upscale=scale, name='EIMN')
+        return self._enhance_model(model=model, in_channels=3, out_channels=3, upscale=scale, name='EIMN')

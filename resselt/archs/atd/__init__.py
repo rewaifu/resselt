@@ -2,15 +2,15 @@ import math
 from typing import Mapping
 
 from .arch import ATD
-from resselt.utils import get_seq_len, pixelshuffle_scale, get_pixelshuffle_params
-from resselt.registry.key_condition import KeyCondition
-from resselt.registry.architecture import WrappedModel, Architecture
+
+from ...factory import KeyCondition, Architecture
+from ...utilities.state_dict import get_seq_len, get_pixelshuffle_params, pixelshuffle_scale
 
 
 class ATDArch(Architecture[ATD]):
     def __init__(self):
         super().__init__(
-            id='ATD',
+            uid='ATD',
             detect=KeyCondition.has_all(
                 'relative_position_index_SA',
                 'conv_first.weight',
@@ -44,27 +44,10 @@ class ATDArch(Architecture[ATD]):
             ),
         )
 
-    def load(self, state_dict: Mapping[str, object]) -> WrappedModel:
+    def load(self, state_dict: Mapping[str, object]):
         img_size = 64  # cannot be deduced from state dict
         patch_size = 1  # cannot be deduced from state dict
-        in_chans = 3
-        embed_dim = 90
-        depths = (6, 6, 6, 6)
-        num_heads = (6, 6, 6, 6)
-        window_size = 8
-        category_size = 256  # cannot be deduced from state dict
-        num_tokens = 64
-        reducted_dim = 4
-        convffn_kernel_size = 5
-        mlp_ratio = 2.0
-        qkv_bias = True
-        ape = False
-        patch_norm = True
-        upscale = 1
         img_range = 1.0  # cannot be deduced from state dict
-        upsampler = ''
-        resi_connection = '1conv'
-        norm = True
 
         in_chans = state_dict['conv_first.weight'].shape[1]
         embed_dim = state_dict['conv_first.weight'].shape[0]
@@ -134,4 +117,4 @@ class ATDArch(Architecture[ATD]):
             norm=norm,
         )
 
-        return WrappedModel(model=model, in_channels=in_chans, out_channels=in_chans, upscale=upscale, name='ATD')
+        return self._enhance_model(model=model, in_channels=in_chans, out_channels=in_chans, upscale=upscale, name='ATD')

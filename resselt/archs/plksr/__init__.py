@@ -2,9 +2,8 @@ from typing import Mapping, Union
 
 from .plksr import plksr
 from .rplksr import realplksr
-from resselt.utils import get_seq_len, pixelshuffle_scale
-from resselt.registry.key_condition import KeyCondition
-from resselt.registry.architecture import WrappedModel, Architecture
+from ...factory import Architecture, KeyCondition
+from ...utilities.state_dict import get_seq_len, pixelshuffle_scale
 
 _PLKSR = Union[plksr, realplksr]
 
@@ -12,7 +11,7 @@ _PLKSR = Union[plksr, realplksr]
 class PLKSRArch(Architecture[_PLKSR]):
     def __init__(self):
         super().__init__(
-            id='PLKSR',
+            uid='PLKSR',
             detect=KeyCondition.has_all(
                 'feats.0.weight',
                 KeyCondition.has_any(
@@ -28,13 +27,8 @@ class PLKSRArch(Architecture[_PLKSR]):
             ),
         )
 
-    def load(self, state_dict: Mapping[str, object]) -> WrappedModel:
-        dim = 64
-        n_blocks = 28
-        scale = 4
+    def load(self, state_dict: Mapping[str, object]):
         kernel_size = 17
-        split_ratio = 0.25
-        use_ea = True
         in_nc = state_dict['feats.0.weight'].shape[1]
         out_nc = in_nc
 
@@ -124,4 +118,4 @@ class PLKSRArch(Architecture[_PLKSR]):
             )
         else:
             raise ValueError('Unknown model type')
-        return WrappedModel(model=model, in_channels=in_nc, out_channels=out_nc, upscale=scale, name=name)
+        return self._enhance_model(model=model, in_channels=in_nc, out_channels=out_nc, upscale=scale, name=name)

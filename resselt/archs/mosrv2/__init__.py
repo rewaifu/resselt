@@ -2,15 +2,14 @@ import math
 from typing import Mapping
 
 from .arch import MoSRv2
-from resselt.utils import get_seq_len
-from resselt.registry.key_condition import KeyCondition
-from resselt.registry.architecture import WrappedModel, Architecture
+from ...factory import KeyCondition, Architecture
+from ...utilities.state_dict import get_seq_len
 
 
 class MoSRv2Arch(Architecture[MoSRv2]):
     def __init__(self):
         super().__init__(
-            id='MoSRv2',
+            uid='MoSRv2',
             detect=KeyCondition.has_any(
                 KeyCondition.has_all(
                     'gblocks.1.weight',
@@ -59,7 +58,7 @@ class MoSRv2Arch(Architecture[MoSRv2]):
             ),
         )
 
-    def load(self, state: Mapping[str, object]) -> WrappedModel:
+    def load(self, state: Mapping[str, object]):
         samplemods = ['conv', 'pixelshuffledirect', 'pixelshuffle', 'nearest+conv', 'dysample']
         _, upsampler, scale, dim, in_ch, mid_dim, _ = [i.item() for i in state['to_img.MetaUpsample']]
         upsampler = samplemods[upsampler]
@@ -88,4 +87,4 @@ class MoSRv2Arch(Architecture[MoSRv2]):
             rms_norm=rms_norm,
         )
 
-        return WrappedModel(model=model, in_channels=in_ch, out_channels=in_ch, upscale=scale, name='MoSRv2')
+        return self._enhance_model(model=model, in_channels=in_ch, out_channels=in_ch, upscale=scale, name='MoSRv2')

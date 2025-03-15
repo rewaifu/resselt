@@ -2,15 +2,14 @@ import math
 from typing import Mapping
 
 from .arch import DRCT
-from resselt.utils import get_seq_len, get_pixelshuffle_params
-from resselt.registry.key_condition import KeyCondition
-from resselt.registry.architecture import WrappedModel, Architecture
+from ...factory import Architecture, KeyCondition
+from ...utilities.state_dict import get_seq_len, get_pixelshuffle_params
 
 
 class MoSRArch(Architecture[DRCT]):
     def __init__(self):
         super().__init__(
-            id='DRCT',
+            uid='DRCT',
             detect=KeyCondition.has_all(
                 'conv_first.weight',
                 'conv_first.bias',
@@ -39,25 +38,9 @@ class MoSRArch(Architecture[DRCT]):
             ),
         )
 
-    def load(self, state_dict: Mapping[str, object]) -> WrappedModel:
-        # Get values from state
-        # Defaults
-        img_size = 64
+    def load(self, state_dict: Mapping[str, object]):
         patch_size = 1  # cannot be detected
-        in_chans = 3
-        embed_dim = 180
-        depths = (6, 6, 6, 6, 6, 6)
-        num_heads = (6, 6, 6, 6, 6, 6)
-        window_size = 16
-        mlp_ratio = 2.0
-        qkv_bias = True
-        ape = False
-        patch_norm = True
-        upscale = 2
         img_range = 1.0  # cannot be deduced from state_dict
-        upsampler = ''
-        resi_connection = '1conv'
-        gc = 32
 
         # detect
         in_chans = state_dict['conv_first.weight'].shape[1]
@@ -118,4 +101,4 @@ class MoSRArch(Architecture[DRCT]):
             gc=gc,
         )
 
-        return WrappedModel(model=model, in_channels=in_chans, out_channels=in_chans, upscale=upscale, name='DRCT')
+        return self._enhance_model(model=model, in_channels=in_chans, out_channels=in_chans, upscale=upscale, name='DRCT')

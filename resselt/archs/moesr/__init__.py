@@ -1,15 +1,14 @@
 from typing import Mapping
 
 from .arch import MoESR
-from resselt.utils import get_seq_len
-from resselt.registry.key_condition import KeyCondition
-from resselt.registry.architecture import WrappedModel, Architecture
+from ...factory import KeyCondition, Architecture
+from ...utilities.state_dict import get_seq_len
 
 
 class MoESRArch(Architecture[MoESR]):
     def __init__(self):
         super().__init__(
-            id='MoESR',
+            uid='MoESR',
             detect=KeyCondition.has_all(
                 'in_to_dim.weight',
                 'in_to_dim.bias',
@@ -30,7 +29,7 @@ class MoESRArch(Architecture[MoESR]):
             ),
         )
 
-    def load(self, state: Mapping[str, object]) -> WrappedModel:
+    def load(self, state: Mapping[str, object]):
         upsample = ['conv', 'pixelshuffledirect', 'pixelshuffle', 'nearest+conv', 'dysample']
         dim, in_ch = state['in_to_dim.weight'].shape[:2]
         n_blocks = get_seq_len(state, 'blocks')
@@ -55,4 +54,4 @@ class MoESRArch(Architecture[MoESR]):
             upsample_dim=int(upsample_dim),
         )
 
-        return WrappedModel(model=model, in_channels=in_ch, out_channels=int(out_ch), upscale=int(scale), name='MoESR')
+        return self._enhance_model(model=model, in_channels=in_ch, out_channels=int(out_ch), upscale=int(scale), name='MoESR')

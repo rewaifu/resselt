@@ -2,15 +2,14 @@ import math
 from typing import Mapping
 
 from .arch import RCAN
-from resselt.utils import get_seq_len, get_pixelshuffle_params
-from resselt.registry.key_condition import KeyCondition
-from resselt.registry.architecture import WrappedModel, Architecture
+from ...factory import KeyCondition, Architecture
+from ...utilities.state_dict import get_seq_len, get_pixelshuffle_params
 
 
 class RCANArch(Architecture[RCAN]):
     def __init__(self):
         super().__init__(
-            id='RCAN',
+            uid='RCAN',
             detect=KeyCondition.has_any(
                 KeyCondition.has_all(
                     'head.0.weight',
@@ -27,7 +26,7 @@ class RCANArch(Architecture[RCAN]):
             ),
         )
 
-    def load(self, state_dict: Mapping[str, object]) -> WrappedModel:
+    def load(self, state_dict: Mapping[str, object]):
         n_resgroups = get_seq_len(state_dict, 'body') - 1
         n_resblocks = get_seq_len(state_dict, 'body.0.body') - 1
         head_index = 0
@@ -60,4 +59,4 @@ class RCANArch(Architecture[RCAN]):
             unshuffle_mod=unshuffle_mod,
         )
 
-        return WrappedModel(model=model, in_channels=n_colors, out_channels=n_colors, upscale=scale, name='RCAN')
+        return self._enhance_model(model=model, in_channels=n_colors, out_channels=n_colors, upscale=scale, name='RCAN')

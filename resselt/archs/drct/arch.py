@@ -3,7 +3,7 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from resselt.archs.utils import to_2tuple
+from ...utilities import to_2tuple
 
 
 class ChannelAttention(nn.Module):

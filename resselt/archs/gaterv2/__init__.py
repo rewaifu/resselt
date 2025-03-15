@@ -1,15 +1,14 @@
 from typing import Mapping
 
 from .arch import GateRV2
-from resselt.utils import get_seq_len
-from resselt.registry.key_condition import KeyCondition
-from resselt.registry.architecture import WrappedModel, Architecture
+from ...factory import KeyCondition, Architecture
+from ...utilities.state_dict import get_seq_len
 
 
 class GateRV2Arch(Architecture[GateRV2]):
     def __init__(self):
         super().__init__(
-            id='GateRv2',
+            uid='GateRv2',
             detect=KeyCondition.has_all(
                 'in_to_dim.weight',
                 'in_to_dim.bias',
@@ -124,7 +123,7 @@ class GateRV2Arch(Architecture[GateRV2]):
             ),
         )
 
-    def load(self, state: Mapping[str, object]) -> WrappedModel:
+    def load(self, state: Mapping[str, object]):
         dim, in_ch = state['in_to_dim.weight'].shape[:2]
         enc_blocks = [get_seq_len(state, f'encode.{i}.gated') for i in range(get_seq_len(state, 'encode'))]
         latent = get_seq_len(state, 'latent')
@@ -137,4 +136,4 @@ class GateRV2Arch(Architecture[GateRV2]):
             scale, upsample_dim, upsampler = 1, 32, 'conv'
         model = GateRV2(in_ch, dim, enc_blocks, dec_blocks, latent, scale, upsampler, upsample_dim)
 
-        return WrappedModel(model=model, in_channels=in_ch, out_channels=int(in_ch), upscale=scale, name='GateRv2')
+        return self._enhance_model(model=model, in_channels=in_ch, out_channels=int(in_ch), upscale=scale, name='GateRv2')

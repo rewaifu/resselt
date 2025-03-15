@@ -1,15 +1,14 @@
 from typing import Mapping
 
 from .arch import GateR
-from resselt.utils import get_seq_len
-from resselt.registry.key_condition import KeyCondition
-from resselt.registry.architecture import WrappedModel, Architecture
+from ...factory import KeyCondition, Architecture
+from ...utilities.state_dict import get_seq_len
 
 
 class GateRArch(Architecture[GateR]):
     def __init__(self):
         super().__init__(
-            id='GateR',
+            uid='GateR',
             detect=KeyCondition.has_all(
                 'dec0.0.bias',
                 'dec0.0.weight',
@@ -83,11 +82,11 @@ class GateRArch(Architecture[GateR]):
             ),
         )
 
-    def load(self, state: Mapping[str, object]) -> WrappedModel:
+    def load(self, state: Mapping[str, object]):
         block_list = ['enc0', 'enc1.1', 'enc2.1', 'latent.1', 'dec0.1', 'dec1.1', 'dec2.0']
         dim, in_ch = state['in_to_dim.weight'].shape[:2]
         num_blocks = [get_seq_len(state, block + '.gated') for block in block_list]
         latent_att = 'latent.1.gated.0.conv.conv.weight' not in state
         model = GateR(in_ch=in_ch, dim=dim, num_blocks=num_blocks, latent_att=latent_att)
 
-        return WrappedModel(model=model, in_channels=in_ch, out_channels=int(in_ch), upscale=1, name='GateR')
+        return self._enhance_model(model=model, in_channels=in_ch, out_channels=int(in_ch), upscale=1, name='GateR')

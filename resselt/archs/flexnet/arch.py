@@ -6,7 +6,7 @@ import torch.nn.functional as F
 from einops import rearrange
 from torch import nn
 
-from resselt.archs.utils import DySample
+from resselt.utilities import DySample
 
 
 class Interpolate(nn.Module):

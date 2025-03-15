@@ -13,7 +13,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.init import trunc_normal_
 
-from resselt.archs.utils import to_2tuple
+from ...utilities import to_2tuple
 
 
 # Shuffle operation for Categorization and UnCategorization operations.

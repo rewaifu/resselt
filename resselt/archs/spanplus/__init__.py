@@ -1,21 +1,18 @@
 from typing import Mapping
 
 from .arch import SpanPlus
-from resselt.utils import get_seq_len, dysample_scale, pixelshuffle_scale
-from resselt.registry.key_condition import KeyCondition
-from resselt.registry.architecture import WrappedModel, Architecture
+from ...factory import Architecture, KeyCondition
+from ...utilities.state_dict import get_seq_len, pixelshuffle_scale, dysample_scale
 
 
 class SpanPlusArch(Architecture[SpanPlus]):
     def __init__(self):
         super().__init__(
-            id='spanplus',
-            detect=KeyCondition.has_all(
-                'feats.0.eval_conv.weight',
-            ),
+            uid='spanplus',
+            detect=KeyCondition.has_all('feats.0.eval_conv.weight'),
         )
 
-    def load(self, state_dict: Mapping[str, object]) -> WrappedModel:
+    def load(self, state_dict: Mapping[str, object]):
         n_feats = get_seq_len(state_dict, 'feats') - 1
         blocks = [get_seq_len(state_dict, f'feats.{n_feat + 1}.block_n') for n_feat in range(n_feats)]
         num_in_ch = state_dict['feats.0.eval_conv.weight'].shape[1]
@@ -38,4 +35,4 @@ class SpanPlusArch(Architecture[SpanPlus]):
             upsampler=upsampler,
         )
 
-        return WrappedModel(model=model, in_channels=num_in_ch, out_channels=num_out_ch, upscale=upscale, name='SPANPlus')
+        return self._enhance_model(model=model, in_channels=num_in_ch, out_channels=num_out_ch, upscale=upscale, name='SPANPlus')

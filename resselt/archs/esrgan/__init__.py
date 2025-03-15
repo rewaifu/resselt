@@ -7,9 +7,8 @@ from typing import Mapping
 from typing_extensions import override
 
 from .arch import RRDBNet
-from resselt.utils import get_seq_len
-from resselt.registry.key_condition import KeyCondition
-from resselt.registry.architecture import WrappedModel, Architecture
+from ...factory import KeyCondition, Architecture
+from ...utilities.state_dict import get_seq_len
 
 
 def _new_to_old_arch(state: Mapping[str, object], state_map: dict, num_blocks: int):
@@ -125,7 +124,7 @@ def _to_old_arch(state: Mapping[str, object]) -> Mapping[str, object]:
 class ESRGANArch(Architecture[RRDBNet]):
     def __init__(self) -> None:
         super().__init__(
-            id='ESRGAN',
+            uid='ESRGAN',
             detect=KeyCondition.has_any(
                 KeyCondition.has_all(
                     'model.0.weight',
@@ -153,15 +152,9 @@ class ESRGANArch(Architecture[RRDBNet]):
         )
 
     @override
-    def load(self, state_dict: Mapping[str, object]) -> WrappedModel:
+    def load(self, state_dict: Mapping[str, object]):
         # default values
-        in_nc: int = 3
-        out_nc: int = 3
-        num_filters: int = 64
-        num_blocks: int = 23
-        scale: int = 4
         plus: bool = False
-        shuffle_factor: int | None = None
 
         state_dict = _to_old_arch(state_dict)
 
@@ -198,4 +191,4 @@ class ESRGANArch(Architecture[RRDBNet]):
         if shuffle_factor:
             in_nc //= shuffle_factor**2
             scale //= shuffle_factor
-        return WrappedModel(model=model, in_channels=in_nc, out_channels=out_nc, upscale=scale, name='ESRGAN')
+        return self._enhance_model(model=model, in_channels=in_nc, out_channels=out_nc, upscale=scale, name='ESRGAN')

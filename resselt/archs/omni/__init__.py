@@ -2,10 +2,10 @@ import math
 from typing import Mapping
 
 from .arch import OmniSR
-from resselt.utils import get_seq_len, pixelshuffle_scale
-from resselt.registry.key_condition import KeyCondition
-from resselt.registry.architecture import WrappedModel, Architecture
 import warnings
+
+from ...factory import Architecture, KeyCondition
+from ...utilities.state_dict import pixelshuffle_scale, get_seq_len
 
 warnings.filterwarnings('ignore')
 
@@ -13,7 +13,7 @@ warnings.filterwarnings('ignore')
 class OmniArch(Architecture[OmniSR]):
     def __init__(self):
         super().__init__(
-            id='OmniSR',
+            uid='OmniSR',
             detect=KeyCondition.has_all(
                 'residual_layer.0.residual_layer.0.layer.0.fn.0.weight',
                 'input.weight',
@@ -21,7 +21,7 @@ class OmniArch(Architecture[OmniSR]):
             ),
         )
 
-    def load(self, state_dict: Mapping[str, object]) -> WrappedModel:
+    def load(self, state_dict: Mapping[str, object]):
         # Remove junk from the state dict
         state_dict_keys = set(state_dict.keys())
         for key in state_dict_keys:
@@ -60,4 +60,4 @@ class OmniArch(Architecture[OmniSR]):
             bias=bias,
         )
 
-        return WrappedModel(model=model, in_channels=num_in_ch, out_channels=num_out_ch, upscale=up_scale, name='OmniSR')
+        return self._enhance_model(model=model, in_channels=num_in_ch, out_channels=num_out_ch, upscale=up_scale, name='OmniSR')

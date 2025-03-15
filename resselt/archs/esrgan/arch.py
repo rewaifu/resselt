@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from resselt.archs.utils import block as B
+from ...utilities import block as B
 
 
 class RRDBNet(nn.Module):

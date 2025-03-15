@@ -2,15 +2,15 @@ from typing import Mapping
 
 from .arch import SPAN
 import torch
-from resselt.utils import pixelshuffle_scale
-from resselt.registry.key_condition import KeyCondition
-from resselt.registry.architecture import WrappedModel, Architecture
+
+from ...factory import Architecture, KeyCondition
+from ...utilities.state_dict import pixelshuffle_scale
 
 
 class SPANArch(Architecture[SPAN]):
     def __init__(self):
         super().__init__(
-            id='SPAN',
+            uid='SPAN',
             detect=KeyCondition.has_all(
                 'conv_1.sk.weight',
                 'block_1.c1_r.sk.weight',
@@ -23,11 +23,7 @@ class SPANArch(Architecture[SPAN]):
             ),
         )
 
-    def load(self, state_dict: Mapping[str, object]) -> WrappedModel:
-        num_in_ch: int = 3
-        num_out_ch: int = 3
-        feature_channels: int = 48
-        upscale: int = 4
+    def load(self, state_dict: Mapping[str, object]):
         norm = True
         img_range = 255.0  # cannot be deduced from state_dict
         rgb_mean = (0.4488, 0.4371, 0.4040)  # cannot be deduced from state_dict
@@ -56,4 +52,4 @@ class SPANArch(Architecture[SPAN]):
             rgb_mean=rgb_mean,
         )
 
-        return WrappedModel(model=model, in_channels=num_in_ch, out_channels=num_out_ch, upscale=upscale, name='SPAN')
+        return self._enhance_model(model=model, in_channels=num_in_ch, out_channels=num_out_ch, upscale=upscale, name='SPAN')

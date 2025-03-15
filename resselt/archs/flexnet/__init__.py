@@ -2,15 +2,14 @@ import math
 from typing import Mapping
 
 from .arch import FlexNet
-from resselt.utils import get_seq_len
-from resselt.registry.key_condition import KeyCondition
-from resselt.registry.architecture import WrappedModel, Architecture
+from ...factory import KeyCondition, Architecture
+from ...utilities.state_dict import get_seq_len
 
 
 class FlexNetArch(Architecture[FlexNet]):
     def __init__(self):
         super().__init__(
-            id='FlexNet',
+            uid='FlexNet',
             detect=KeyCondition.has_all(
                 'short_cut.block.0.weight',
                 'short_cut.block.0.bias',
@@ -27,7 +26,7 @@ class FlexNetArch(Architecture[FlexNet]):
             ),
         )
 
-    def load(self, state: Mapping[str, object]) -> WrappedModel:
+    def load(self, state: Mapping[str, object]):
         window_size = int(state['window_size'])
         dim, inp_channels = state['in_to_feat.weight'].shape[:2]
         out_channels = inp_channels
@@ -69,4 +68,4 @@ class FlexNetArch(Architecture[FlexNet]):
             upsampler=upsampler,
         )
 
-        return WrappedModel(model=model, in_channels=inp_channels, out_channels=out_channels, upscale=scale, name='FlexNet')
+        return self._enhance_model(model=model, in_channels=inp_channels, out_channels=out_channels, upscale=scale, name='FlexNet')

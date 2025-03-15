@@ -2,15 +2,14 @@ import math
 from typing import Mapping
 
 from .arch import SwinIR
-from resselt.utils import get_seq_len, get_pixelshuffle_params
-from resselt.registry.key_condition import KeyCondition
-from resselt.registry.architecture import WrappedModel, Architecture
+from ...factory import KeyCondition, Architecture
+from ...utilities.state_dict import get_seq_len, get_pixelshuffle_params
 
 
 class SwinIRArch(Architecture[SwinIR]):
     def __init__(self):
         super().__init__(
-            id='SwinIR',
+            uid='SwinIR',
             detect=KeyCondition.has_all(
                 'layers.0.residual_group.blocks.0.norm1.weight',
                 'conv_first.weight',
@@ -19,15 +18,10 @@ class SwinIRArch(Architecture[SwinIR]):
             ),
         )
 
-    def load(self, state_dict: Mapping[str, object]) -> WrappedModel:
+    def load(self, state_dict: Mapping[str, object]):
         # Defaults
         img_size = 64
         patch_size = 1
-        embed_dim = 96
-        depths = [6, 6, 6, 6]
-        num_heads = [6, 6, 6, 6]
-        window_size = 7
-        mlp_ratio = 4.0
         qkv_bias = True
         qk_scale = None
         drop_rate = 0.0
@@ -36,11 +30,6 @@ class SwinIRArch(Architecture[SwinIR]):
         ape = False
         patch_norm = True
         use_checkpoint = False
-        upscale = 2
-        img_range = 1.0
-        upsampler = ''
-        resi_connection = '1conv'
-        num_feat = 64
         start_unshuffle = 1
 
         if 'conv_before_upsample.0.weight' in state_dict:
@@ -127,4 +116,4 @@ class SwinIRArch(Architecture[SwinIR]):
             start_unshuffle=start_unshuffle,
         )
 
-        return WrappedModel(model=model, in_channels=in_nc, out_channels=out_nc, upscale=upscale, name='SwinIR')
+        return self._enhance_model(model=model, in_channels=in_nc, out_channels=out_nc, upscale=upscale, name='SwinIR')

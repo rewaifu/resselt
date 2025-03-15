@@ -2,15 +2,14 @@ import math
 from typing import Mapping
 
 from .arch import RHA
-from resselt.utils import get_seq_len
-from resselt.registry.key_condition import KeyCondition
-from resselt.registry.architecture import WrappedModel, Architecture
+from ...factory import Architecture, KeyCondition
+from ...utilities.state_dict import get_seq_len
 
 
 class RHAArch(Architecture[RHA]):
     def __init__(self):
         super().__init__(
-            id='RHA',
+            uid='RHA',
             detect=KeyCondition.has_all(
                 'body.0.down_sample',
                 'body.0.body.0.norm.weight',
@@ -45,7 +44,7 @@ class RHAArch(Architecture[RHA]):
             ),
         )
 
-    def load(self, state: Mapping[str, object]) -> WrappedModel:
+    def load(self, state: Mapping[str, object]):
         upsample = ['conv', 'pixelshuffledirect', 'pixelshuffle', 'nearest+conv', 'dysample']
         unshuffle = 1
         unshuffle_mod = False
@@ -80,4 +79,4 @@ class RHAArch(Architecture[RHA]):
             window_size=window_size,
         )
 
-        return WrappedModel(model=model, in_channels=in_ch, out_channels=out_ch, upscale=scale, name='RHA')
+        return self._enhance_model(model=model, in_channels=in_ch, out_channels=out_ch, upscale=scale, name='RHA')

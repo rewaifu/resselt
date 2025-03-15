@@ -11,7 +11,7 @@ from einops.layers.torch import Rearrange
 from torch.nn import functional as F
 from torch.nn.init import trunc_normal_
 
-from resselt.archs.utils import DropPath
+from ...utilities import DropPath
 
 
 def img2windows(img, H_sp, W_sp):

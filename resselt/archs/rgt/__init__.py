@@ -2,9 +2,8 @@ import math
 from typing import Mapping
 
 from .arch import RGT
-from resselt.utils import get_seq_len, get_pixelshuffle_params
-from resselt.registry.key_condition import KeyCondition
-from resselt.registry.architecture import WrappedModel, Architecture
+from ...factory import Architecture, KeyCondition
+from ...utilities.state_dict import get_seq_len, get_pixelshuffle_params
 
 
 def _get_split_size(state_dict: Mapping[str, object]) -> tuple[int, int]:
@@ -40,7 +39,7 @@ def _get_split_size(state_dict: Mapping[str, object]) -> tuple[int, int]:
 class RGTArch(Architecture[RGT]):
     def __init__(self):
         super().__init__(
-            id='RGT',
+            uid='RGT',
             detect=KeyCondition.has_all(
                 'conv_first.weight',
                 'before_RG.1.weight',
@@ -66,22 +65,13 @@ class RGTArch(Architecture[RGT]):
             ),
         )
 
-    def load(self, state_dict: Mapping[str, object]) -> WrappedModel:
+    def load(self, state_dict: Mapping[str, object]):
         img_size = 64  # unused
-        in_chans = 3
-        embed_dim = 180
-        depth = [2, 2, 2, 2]
-        num_heads = [2, 2, 2, 2]
-        mlp_ratio = 4.0
-        qkv_bias = True
         qk_scale = None  # cannot be deduced from state_dict
         drop_rate = 0.0  # cannot be deduced from state_dict
         attn_drop_rate = 0.0  # cannot be deduced from state_dict
         drop_path_rate = 0.1  # cannot be deduced from state_dict
-        upscale = 2
         img_range = 1.0  # cannot be deduced from state_dict
-        resi_connection = '1conv'
-        split_size = [8, 8]
         c_ratio = 0.5
 
         in_chans = state_dict['conv_first.weight'].shape[1]
@@ -135,4 +125,4 @@ class RGTArch(Architecture[RGT]):
             split_size=split_size,
             c_ratio=c_ratio,
         )
-        return WrappedModel(model=model, in_channels=in_chans, out_channels=in_chans, upscale=upscale, name='RGT')
+        return self._enhance_model(model=model, in_channels=in_chans, out_channels=in_chans, upscale=upscale, name='RGT')

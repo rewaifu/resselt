@@ -2,15 +2,14 @@ import math
 from typing import Mapping
 
 from .arch import mosr as MoSR
-from resselt.utils import get_seq_len, pixelshuffle_scale, dysample_scale
-from resselt.registry.key_condition import KeyCondition
-from resselt.registry.architecture import WrappedModel, Architecture
+from ...factory import KeyCondition, Architecture
+from ...utilities.state_dict import get_seq_len, pixelshuffle_scale, dysample_scale
 
 
 class MoSRArch(Architecture[MoSR]):
     def __init__(self):
         super().__init__(
-            id='MoSR',
+            uid='MoSR',
             detect=KeyCondition.has_all(
                 'gblocks.0.weight',
                 'gblocks.0.bias',
@@ -25,7 +24,7 @@ class MoSRArch(Architecture[MoSR]):
             ),
         )
 
-    def load(self, state: Mapping[str, object]) -> WrappedModel:
+    def load(self, state: Mapping[str, object]):
         # Get values from state
         n_block = get_seq_len(state, 'gblocks') - 6
         in_ch = state['gblocks.0.weight'].shape[1]
@@ -61,4 +60,4 @@ class MoSRArch(Architecture[MoSR]):
             kernel_size=kernel_size,
         )
 
-        return WrappedModel(model=model, in_channels=in_ch, out_channels=out_ch, upscale=upscale, name='MoSR')
+        return self._enhance_model(model=model, in_channels=in_ch, out_channels=out_ch, upscale=upscale, name='MoSR')

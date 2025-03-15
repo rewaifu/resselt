@@ -11,9 +11,7 @@ import torch.nn as nn
 import torch.utils.checkpoint as checkpoint
 from torch.nn.init import trunc_normal_
 
-from resselt.archs.utils import DropPath
-from resselt.archs.utils import pad_to_multiple
-from resselt.archs.utils import to_2tuple
+from ...utilities import to_2tuple, DropPath, pad_to_multiple
 
 
 class Mlp(nn.Module):
