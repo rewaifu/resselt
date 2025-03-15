@@ -1,6 +1,6 @@
 [project]
 name = "resselt"
-version = "2.1.2"
+version = "2.0.0"
 description = "Image Super-Resolution PyTorch architectures loader"
 readme = "README.md"
 authors = [{ name = "umzi" }]
@@ -14,8 +14,8 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-torch ={ index = "pytorch-cu124" }
-torchvision ={ index = "pytorch-cu124" }
+torch = { index = "pytorch-cu124" }
+torchvision = { index = "pytorch-cu124" }
 
 [[tool.uv.index]]
 name = "pytorch-cu124"
@@ -23,9 +23,9 @@ url = "https://download.pytorch.org/whl/cu124"
 explicit = true
 
 [[tool.uv.index]]
-name = "yor"
-url = "https://pypi.yor.ovh/simple/"
-publish-url = "https://pypi.yor.ovh/"
+name = "rewaifu"
+url = "https://pypi.shd.llc/rewaifu/stable"
+publish-url = "https://pypi.shd.llc/rewaifu/stable"
 
 [build-system]
 requires = ["hatchling"]
