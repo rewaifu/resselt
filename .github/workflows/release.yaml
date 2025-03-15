@@ -20,5 +20,5 @@ jobs:
 
       - name: Build and publish package
         run: |
-          uv build
-          uv publish --wheel --index rewaifu --username ${{ secrets.PYPI_LOGIN }} --password ${{ secrets.PYPI_PASSWORD }} 
+          uv build --wheel
+          uv publish --index rewaifu --username ${{ secrets.PYPI_LOGIN }} --password ${{ secrets.PYPI_PASSWORD }} 
