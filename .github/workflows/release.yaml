@@ -1,9 +1,7 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_dispatch:
 
 jobs:
   publish-to-pypi:
@@ -23,4 +21,4 @@ jobs:
       - name: Build and publish package
         run: |
           uv build
-          uv publish --index yor --username ${{ secrets.PYPI_LOGIN }} --password ${{ secrets.PYPI_PASSWORD }} 
+          uv publish --index rewaifu --username ${{ secrets.PYPI_LOGIN }} --password ${{ secrets.PYPI_PASSWORD }} 
