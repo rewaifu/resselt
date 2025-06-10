@@ -21,11 +21,6 @@ name = "pytorch-cu124"
 url = "https://download.pytorch.org/whl/cu124"
 explicit = true
 
-[[tool.uv.index]]
-name = "rewaifu"
-url = "https://pypi.shd.llc/rewaifu/stable"
-publish-url = "https://pypi.shd.llc/rewaifu/stable"
-
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

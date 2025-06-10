@@ -18,4 +18,5 @@ print(model.parameters_info)
 ```
 
 ## Credits
+
 * Based on [chaiNNer-org/spandrel](https://github.com/chaiNNer-org/spandrel)
