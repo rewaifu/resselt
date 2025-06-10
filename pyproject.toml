@@ -3,7 +3,6 @@ name = "resselt"
 version = "1.0.0"
 description = "Image Super-Resolution PyTorch architectures loader"
 readme = "README.md"
-authors = [{ name = "umzi" }]
 requires-python = ">=3.10"
 dependencies = [
   "einops>=0.8.0",
