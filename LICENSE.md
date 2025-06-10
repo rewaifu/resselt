@@ -25,7 +25,7 @@
 | [`GateRv2`](https://github.com/umzi2/GateRv2)                                                       | [MIT](https://github.com/umzi2/GateRv2/blob/master/LICENSE)                                   |
 | [`GaterV3`](https://github.com/umzi2/GaterV3)                                                       | [MIT](https://github.com/umzi2/GaterV3/blob/master/LICENSE)                                   |
 | [`LAWFFT`](https://github.com/rewaifu/LAWFFT)                                                       | [MIT](https://github.com/rewaifu/LAWFFT/blob/main/LICENSE)                                    |
-| [`MoeSR`](https://github.com/TeamMoeAI/MoeSR)                                                       | [GPL-3.0](https://github.com/TeamMoeAI/MoeSR/blob/main/LICENSE)                               |
+| [`MoeSR`](https://github.com/umzi2/MoeSR)                                                           | [MIT](https://github.com/umzi2/MoESR/blob/master/LICENSE)                                     |
 | [`MoSRV2`](https://github.com/umzi2/MoSRV2)                                                         | [MIT](https://github.com/umzi2/MoSRV2/blob/master/LICENSE)                                    |
 | [`RTMoSR`](https://github.com/rewaifu/RTMoSR)                                                       | [MIT](https://github.com/rewaifu/RTMoSR/blob/main/LICENSE)                                    |
 | [`RCAN`](https://github.com/yulunzhang/RCAN)                                                        | No license                                                                                    |
