@@ -1032,7 +1032,7 @@ requires-dist = [
     { name = "einops", specifier = ">=0.8.0" },
     { name = "numpy", specifier = ">=1" },
     { name = "safetensors", specifier = ">=0.5.2" },
-    { name = "torch" },
+    { name = "torch", specifier = ">=2.6.0" },
     { name = "torch", marker = "sys_platform == 'darwin' and extra == 'cu118'", specifier = ">=2.6.0" },
     { name = "torch", marker = "sys_platform == 'darwin' and extra == 'cu124'", specifier = ">=2.6.0" },
     { name = "torch", marker = "sys_platform == 'darwin' and extra == 'cu126'", specifier = ">=2.6.0" },
