@@ -503,17 +503,20 @@ class GateRV3(nn.Module):
         dec_blocks=(2, 2, 2, 2),
         num_latent=12,
         scale=1,
-        upsample: SampleMods = 'pixelshuffledirect',
+        upsample: SampleMods = 'pixelshuffle',
         upsample_mid_dim=32,
-        end_gamma_init=0,
+        end_gamma_init=1,
+        attention=False,
+        span_blocks=4,
         **kwargs,
     ) -> None:
         super().__init__()
+
         self.scale = scale
         self.in_to_dim = nn.Conv2d(in_ch, dim, 3, 1, 1)
         self.gater_encode = nn.ModuleList([Block(dim * (2**i), enc_blocks[i]) for i in range(len(enc_blocks))])
         self.span_block0 = SPAB(dim, end=False)
-        self.span_n_b = nn.Sequential(*[SPAB(dim, end=False) for _ in range(len(enc_blocks))])
+        self.span_n_b = nn.Sequential(*[SPAB(dim, end=False) for _ in range(span_blocks)])
         self.span_end = SPAB(dim, end=True)
         self.sisr_end_conv = Conv3XC(dim, dim, bias=True)
         self.sisr_cat_conv = nn.Conv2d(dim * 4, dim, 1)
@@ -524,7 +527,7 @@ class GateRV3(nn.Module):
                     dim * (2 ** len(enc_blocks)),
                     expansion_ratio=1.5,
                     conv_ratio=1.00,
-                    att=True,
+                    att=attention,
                 )
                 for _ in range(num_latent)
             ]
@@ -542,7 +545,7 @@ class GateRV3(nn.Module):
         self.pad = 2 ** (len(enc_blocks))
         # self.dim_to_in = nn.Conv2d(dim*2, in_ch, 3, 1, 1)
         self.gamma = nn.Parameter(torch.ones(1, in_ch, 1, 1) * end_gamma_init)
-
+        self.gamma.register_hook(lambda grad: grad * 100)
         if scale != 1:
             self.short_to_dim = nn.Upsample(scale_factor=scale)  # ConvBlock(in_ch, dim)
             self.dim_to_in = UniUpsample(upsample, scale, dim, in_ch, upsample_mid_dim)
