@@ -3,7 +3,7 @@ name = "resselt"
 version = "1.0.1"
 description = "Image Super-Resolution PyTorch architectures loader"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
     "einops>=0.8.0",
     "numpy>=1",
@@ -73,3 +73,23 @@ dev = [
     "ruff>=0.9.4",
     "typer>=0.15.4",
 ]
+
+[tool.ruff]
+line-length = 150
+indent-width = 4
+preview = true
+exclude = ["resselt/archs/**/*"]
+
+[tool.ruff.format]
+docstring-code-format = true
+line-ending = "lf"
+quote-style = "single"
+skip-magic-trailing-comma = true
+
+[tool.ruff.lint]
+select = ['ALL']
+fixable = ["ALL"]
+ignore = ['ANN', 'COM812', 'CPY', 'D', "DOC", 'Q000', 'Q003', 'S101', 'PLR', 'FBT001', 'FBT002', 'N8']
+
+[tool.ruff.lint.isort]
+split-on-trailing-comma = false
