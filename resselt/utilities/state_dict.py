@@ -1,14 +1,11 @@
 import math
-from typing import Mapping
+from collections.abc import Mapping
 
 
-def remove_common_prefix(
-    state_dict: Mapping[str, object],
-    prefixes: list[str],
-) -> Mapping[str, object]:
+def remove_common_prefix(state_dict: Mapping[str, object], prefixes: list[str]) -> Mapping[str, object]:
     if len(state_dict) > 0:
         for prefix in prefixes:
-            if all(i.startswith(prefix) for i in state_dict.keys()):
+            if all(i.startswith(prefix) for i in state_dict):
                 state_dict = {k[len(prefix) :]: v for k, v in state_dict.items()}
     return state_dict
 
@@ -31,9 +28,7 @@ def canonicalize_state_dict(state_dict: Mapping[str, object]) -> Mapping[str, ob
             break
 
     # remove known common prefixes
-    state_dict = remove_common_prefix(state_dict, ['module.', 'netG.'])
-
-    return state_dict
+    return remove_common_prefix(state_dict, ['module.', 'netG.'])
 
 
 def pixelshuffle_scale(ps_size: int, channels: int):
@@ -44,11 +39,7 @@ def dysample_scale(ds_size: int):
     return math.isqrt(ds_size // 8)
 
 
-def get_pixelshuffle_params(
-    state_dict: Mapping[str, object],
-    upsample_key: str = 'upsample',
-    default_nf: int = 64,
-) -> tuple[int, int]:
+def get_pixelshuffle_params(state_dict: Mapping[str, object], upsample_key: str = 'upsample', default_nf: int = 64) -> tuple[int, int]:
     """
     This will detect the upscale factor and number of features of a pixelshuffle module in the state dict.
 
@@ -86,7 +77,7 @@ def get_seq_len(state_dict: Mapping[str, object], seq_key: str) -> int:
     prefix = seq_key + '.'
 
     keys: set[int] = set()
-    for k in state_dict.keys():
+    for k in state_dict:
         if k.startswith(prefix):
             index = k[len(prefix) :].split('.', maxsplit=1)[0]
             keys.add(int(index))

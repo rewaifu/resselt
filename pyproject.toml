@@ -89,7 +89,7 @@ skip-magic-trailing-comma = true
 [tool.ruff.lint]
 select = ['ALL']
 fixable = ["ALL"]
-ignore = ['ANN', 'COM812', 'CPY', 'D', "DOC", 'Q000', 'Q003', 'S101', 'PLR', 'FBT001', 'FBT002', 'N8']
+ignore = ['ANN', 'COM812', 'CPY', 'D', "DOC", 'Q000', 'Q003', 'S101', 'PLR', 'FBT001', 'FBT002', 'N8', 'PTH', 'PGH003', 'ERA001']
 
 [tool.ruff.lint.isort]
 split-on-trailing-comma = false

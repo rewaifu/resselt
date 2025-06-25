@@ -1,12 +1,13 @@
+from abc import ABC, abstractmethod
+from collections.abc import Mapping
 from dataclasses import dataclass
+from typing import Generic, TypeVar
 
 import torch
-from abc import ABC, abstractmethod
-from typing import Generic, TypeVar, Mapping
 
 from .key_condition import KeyCondition
 
-T = TypeVar('T', bound=torch.nn.Module, covariant=True)
+T = TypeVar('T', bound=torch.nn.Module, covariant=True)  # noqa: PLC0105
 
 
 @dataclass
