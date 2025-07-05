@@ -1,10 +1,10 @@
 import os
-from typing import Mapping, Dict, Iterator, TypeVar
+import pickle  # noqa: S403
+from collections.abc import Iterator, Mapping
+from types import SimpleNamespace
+from typing import TypeVar
 
 import torch
-import pickle
-from types import SimpleNamespace
-
 from typing_extensions import override
 
 from .factory import Architecture
@@ -15,7 +15,7 @@ class ArchitectureNotFound(Exception):
     pass
 
 
-T = TypeVar('T', bound=torch.nn.Module, covariant=True)
+T = TypeVar('T', bound=torch.nn.Module, covariant=True)  # noqa: PLC0105
 
 safe_list = {
     ('collections', 'OrderedDict'),
@@ -30,28 +30,27 @@ safe_list = {
 }
 
 
-class RestrictedUnpickler(pickle.Unpickler):
+class RestrictedUnpickler(pickle.Unpickler):  # noqa: S301
     @override
     def find_class(self, module: str, name: str):
         # Only allow required classes to load state dict
         if (module, name) not in safe_list:
-            raise pickle.UnpicklingError(f"Global '{module}.{name}' is forbidden")
+            msg = f"Global '{module}.{name}' is forbidden"
+            raise pickle.UnpicklingError(msg)
         return super().find_class(module, name)
 
 
 RestrictedUnpickle = SimpleNamespace(
-    Unpickler=RestrictedUnpickler,
-    __name__='pickle',
-    load=lambda *args, **kwargs: RestrictedUnpickler(*args, **kwargs).load(),
+    Unpickler=RestrictedUnpickler, __name__='pickle', load=lambda *args, **kwargs: RestrictedUnpickler(*args, **kwargs).load()
 )
 
 
 class Registry:
     def __init__(self):
-        self.store: Dict[str, Architecture] = {}
+        self.store: dict[str, Architecture] = {}
 
-    def __contains__(self, id: str):
-        return id in self.store
+    def __contains__(self, uid: str):
+        return uid in self.store
 
     def __iter__(self) -> Iterator[Architecture]:
         self._iter_keys = iter(self.store)
@@ -84,7 +83,7 @@ class Registry:
             except RuntimeError:
                 try:
                     pth_state_dict = torch.load(path, pickle_module=RestrictedUnpickle)
-                except Exception:
+                except Exception:  # noqa: BLE001
                     pth_state_dict = None
 
                 if pth_state_dict is None:
@@ -95,11 +94,12 @@ class Registry:
         elif extension == '.pth' or extension == '.ckpt':
             state_dict = torch.load(path, pickle_module=RestrictedUnpickle)
         elif extension == '.safetensors':
-            import safetensors.torch
+            import safetensors.torch  # noqa: PLC0415
 
             state_dict = safetensors.torch.load_file(path)
         else:
-            raise ValueError(f'Unsupported model file extension {extension}. Please try a supported model type.')
+            msg = f'Unsupported model file extension {extension}. Please try a supported model type.'
+            raise ValueError(msg)
 
         return self.load_from_state_dict(state_dict)
 

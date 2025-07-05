@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from typing import Literal, Mapping
+from typing import TYPE_CHECKING, Literal
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 
 class KeyCondition:
@@ -28,5 +31,4 @@ class KeyCondition:
 
         if self._kind == 'all':
             return all(_detect(key) for key in self._keys)
-        else:
-            return any(_detect(key) for key in self._keys)
+        return any(_detect(key) for key in self._keys)

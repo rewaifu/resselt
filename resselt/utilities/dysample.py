@@ -1,3 +1,5 @@
+import traceback
+
 import torch
 from torch import nn
 from torch.nn import functional as F
@@ -9,21 +11,15 @@ class DySample(nn.Module):
     https://github.com/tiny-smart/dysample
     """
 
-    def __init__(
-        self,
-        in_channels: int,
-        out_ch: int,
-        scale: int = 2,
-        groups: int = 4,
-        end_convolution: bool = True,
-    ):
+    def __init__(self, in_channels: int, out_ch: int, scale: int = 2, groups: int = 4, end_convolution: bool = True):
         super().__init__()
 
         try:
-            assert in_channels >= groups and in_channels % groups == 0
-        except Exception:
-            msg = 'Incorrect in_channels and groups values.'
-            raise ValueError(msg)
+            assert in_channels >= groups
+            assert in_channels % groups == 0
+        except Exception:  # noqa: BLE001
+            msg = f'Incorrect in_channels and groups values: {traceback.format_exc()}'
+            raise ValueError(msg)  # noqa: B904
 
         out_channels = 2 * groups * scale**2
         self.scale = scale
@@ -69,13 +65,9 @@ class DySample(nn.Module):
             .contiguous()
             .flatten(0, 1)
         )
-        output = F.grid_sample(
-            x.reshape(B * self.groups, -1, H, W),
-            coords,
-            mode='bilinear',
-            align_corners=False,
-            padding_mode='border',
-        ).view(B, -1, self.scale * H, self.scale * W)
+        output = F.grid_sample(x.reshape(B * self.groups, -1, H, W), coords, mode='bilinear', align_corners=False, padding_mode='border').view(
+            B, -1, self.scale * H, self.scale * W
+        )
 
         if self.end_convolution:
             output = self.end_conv(output)

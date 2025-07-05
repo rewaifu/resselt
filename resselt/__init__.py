@@ -1,4 +1,5 @@
-from typing import Mapping
+from collections.abc import Mapping
+from importlib.metadata import version as _ver
 
 from .archs import internal_registry
 
@@ -8,9 +9,9 @@ def add(arch):
     return internal_registry.add(arch)
 
 
-def get(id: str):
+def get(uid: str):
     """Get architecture by ID."""
-    return internal_registry.get(id)
+    return internal_registry.get(uid)
 
 
 def load_from_file(path: str):
@@ -23,4 +24,5 @@ def load_from_state_dict(state_dict: Mapping[str, object]):
     return internal_registry.load_from_state_dict(state_dict)
 
 
+__version__ = _ver(__name__)
 __all__ = ['add', 'get', 'load_from_file', 'load_from_state_dict']
