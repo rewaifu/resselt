@@ -448,27 +448,25 @@ class FourierUnit(nn.Module):
         x, pad = pad_to_even(x, self.pad)
 
         orig_dtype = x.dtype
-        with torch.autocast('cuda', enabled=False):
-            # приводим вход к full-precision
-            x = x.to(torch.float32)
+        x = x.to(torch.float32)
 
-            b, c, h, w = x.shape
-            ffted = torch.fft.rfft2(x, norm='ortho')  # complex64
-            real = torch.unsqueeze(torch.real(ffted), -1)  # float32
-            imag = torch.unsqueeze(torch.imag(ffted), -1)  # float32
-            ffted = rearrange(torch.cat((real, imag), -1), 'b c h w d -> b (c d) h w')
+        b, c, h, w = x.shape
+        ffted = torch.fft.rfft2(x, norm='ortho')  # complex64
+        real = torch.unsqueeze(torch.real(ffted), -1)  # float32
+        imag = torch.unsqueeze(torch.imag(ffted), -1)  # float32
+        ffted = rearrange(torch.cat((real, imag), -1), 'b c h w d -> b (c d) h w').to(orig_dtype)
 
-            ffted = self.ln(ffted)  # float32
-            ffted = self.fpe(ffted) + ffted  # float32
+        ffted = self.ln(ffted)  # float32
+        ffted = self.fpe(ffted) + ffted  # float32
 
-            dy_weight = self.weight(ffted)  # float32
-            ffted = self.fdc(ffted).view(b, self.groups, 2 * c, h, -1)  # float32
-            ffted = torch.einsum('ijkml,ijml->ikml', ffted, dy_weight)  # float32
-            ffted = F.gelu(ffted)  # float32
+        dy_weight = self.weight(ffted)  # float32
+        ffted = self.fdc(ffted).view(b, self.groups, 2 * c, h, -1)  # float32
+        ffted = torch.einsum('ijkml,ijml->ikml', ffted, dy_weight)  # float32
+        ffted = F.gelu(ffted)  # float32
 
-            ffted = rearrange(ffted, 'b (c d) h w -> b c h w d', d=2)
-            ffted = torch.view_as_complex(ffted.contiguous())  # complex64
-            output = torch.fft.irfft2(ffted, s=(h, w), norm='ortho')  # float32
+        ffted = rearrange(ffted, 'b (c d) h w -> b c h w d', d=2).to(torch.float32)
+        ffted = torch.view_as_complex(ffted.contiguous())  # complex64
+        output = torch.fft.irfft2(ffted, s=(h, w), norm='ortho')  # float32
 
         return unpad(output.to(orig_dtype), pad)
 
