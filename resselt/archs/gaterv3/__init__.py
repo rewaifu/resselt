@@ -125,14 +125,33 @@ class GateRV3Arch(Architecture[GateRV3]):
         enc_blocks = [get_seq_len(state, f'gater_encode.{i}.gated') for i in range(get_seq_len(state, 'gater_encode'))]
         latent = get_seq_len(state, 'latent')
         dec_blocks = [get_seq_len(state, f'decode.{i}.gated') for i in range(get_seq_len(state, 'decode'))]
+        end_kernel = 1
         if 'dim_to_in.MetaUpsample' in state:
-            upsample = ['conv', 'pixelshuffledirect', 'pixelshuffle', 'nearest+conv', 'dysample']
+            upsample = ['conv', 'pixelshuffledirect', 'pixelshuffle', 'nearest+conv', 'dysample', 'transpose+conv', 'lda', 'pa_up']
             _, index, scale, _, out_ch, upsample_dim, _ = [value.item() for value in state['dim_to_in.MetaUpsample']]
             upsampler = upsample[int(index)]
+
+            if upsampler == 'dysample' and 'dim_to_in.0.weight' not in state:
+                upsample_dim = dim
+                end_kernel = state['dim_to_in.0.end_conv.weight'].shape[2]
+            elif upsampler == 'dysample':
+                end_kernel = state['dim_to_in.2.end_conv.weight'].shape[2]
         else:
             scale, upsample_dim, upsampler = 1, 32, 'conv'
         attention = 'latent.0.token_mix.qkv_dwconv.weight' in state
         span_blocks = get_seq_len(state, 'span_n_b')
-        model = GateRV3(in_ch, dim, enc_blocks, dec_blocks, latent, scale, upsampler, upsample_dim, attention=attention, span_blocks=span_blocks)
+        model = GateRV3(
+            in_ch,
+            dim,
+            enc_blocks,
+            dec_blocks,
+            latent,
+            scale,
+            upsampler,
+            upsample_dim,
+            attention=attention,
+            span_blocks=span_blocks,
+            end_kernel=end_kernel,
+        )
 
         return self._enhance_model(model=model, in_channels=in_ch, out_channels=int(in_ch), upscale=scale, name='GateRV3')
