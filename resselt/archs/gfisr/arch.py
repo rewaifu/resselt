@@ -1,13 +1,23 @@
 import math
 from typing import Literal
 
+import numpy as np
 import torch
 import torch.nn.functional as F
 from einops import rearrange
 from torch import Tensor, nn
-import numpy as np
+from torch.nn.modules.module import T
 
-SampleMods = Literal['conv', 'pixelshuffledirect', 'pixelshuffle', 'nearest+conv', 'dysample', 'transpose+conv', 'lda', 'pa_up']
+SampleMods = Literal[
+    'conv',
+    'pixelshuffledirect',
+    'pixelshuffle',
+    'nearest+conv',
+    'dysample',
+    'transpose+conv',
+    'lda',
+    'pa_up',
+]
 
 
 class DySample(nn.Module):
@@ -117,8 +127,8 @@ class LDA_AQU(nn.Module):
         n_groups=2,
         range_factor=11,
         rpb=True,
-    ):
-        super(LDA_AQU, self).__init__()
+    ) -> None:
+        super().__init__()
         self.k_u = k_u
         self.num_head = nh
         self.scale_factor = scale_factor
@@ -164,7 +174,7 @@ class LDA_AQU(nn.Module):
             self.relative_position_bias_table = nn.Parameter(torch.zeros(1, self.num_head, 1, self.k_u**2, self.hidden_dim // self.num_head))
             nn.init.trunc_normal_(self.relative_position_bias_table, std=0.02)
 
-    def init_weights(self):
+    def init_weights(self) -> None:
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 nn.init.xavier_uniform(m)
@@ -233,8 +243,8 @@ class LDA_AQU(nn.Module):
 
 
 class PA(nn.Module):
-    def __init__(self, dim):
-        super(PA, self).__init__()
+    def __init__(self, dim) -> None:
+        super().__init__()
         self.conv = nn.Sequential(nn.Conv2d(dim, dim, 1), nn.Sigmoid())
 
     def forward(self, x):
@@ -372,216 +382,155 @@ class UniUpsampleV3(nn.Sequential):
         )
 
 
-class Conv3XC(nn.Module):
-    def __init__(self, c_in, c_out, gain1=1, s=1, bias=True) -> None:
+def pad_to_even(x, expand_all_sides=False):
+    H, W = x.shape[-2:]
+
+    pad_left = 0
+    pad_right = W % 2
+    pad_top = 0
+    pad_bottom = H % 2
+
+    if expand_all_sides:
+        pad_left += 2
+        pad_right += 2
+        pad_top += 2
+        pad_bottom += 2
+
+    padded = F.pad(x, (pad_left, pad_right, pad_top, pad_bottom), mode='reflect')
+    return padded, (pad_top, pad_bottom, pad_left, pad_right)
+
+
+def unpad(x, pad):
+    pad_top, pad_bottom, pad_left, pad_right = pad
+    if pad_bottom:
+        x = x[..., :-pad_bottom, :]
+    if pad_top:
+        x = x[..., pad_top:, :]
+    if pad_right:
+        x = x[..., :, :-pad_right]
+    if pad_left:
+        x = x[..., :, pad_left:]
+    return x
+
+
+class FourierUnit(nn.Module):
+    def __init__(self, in_channels, out_channels, groups=1) -> None:
         super().__init__()
-        self.bias = bias
-        self.weight_concat = None
-        self.bias_concat = None
-        self.update_params_flag = False
-        self.stride = s
-        gain = gain1
-
-        self.sk = nn.Conv2d(
-            in_channels=c_in,
-            out_channels=c_out,
+        self.groups = groups
+        self.ln = LayerNorm(out_channels * 2)
+        self.fdc = nn.Conv2d(
+            in_channels=in_channels * 2,
+            out_channels=out_channels * 2 * groups,
             kernel_size=1,
-            padding=0,
-            stride=s,
-            bias=bias,
+            groups=groups,
+            bias=True,
         )
-        self.conv = nn.Sequential(
-            nn.Conv2d(
-                in_channels=c_in,
-                out_channels=c_in * gain,
-                kernel_size=1,
-                padding=0,
-                bias=bias,
-            ),
-            nn.Conv2d(
-                in_channels=c_in * gain,
-                out_channels=c_out * gain,
-                kernel_size=3,
-                stride=s,
-                padding=0,
-                bias=bias,
-            ),
-            nn.Conv2d(
-                in_channels=c_out * gain,
-                out_channels=c_out,
-                kernel_size=1,
-                padding=0,
-                bias=bias,
-            ),
+        self.weight = nn.Sequential(
+            nn.Conv2d(in_channels=in_channels * 2, out_channels=groups, kernel_size=1),
+            nn.Softmax(dim=1),
         )
-
-        self.eval_conv = nn.Conv2d(
-            in_channels=c_in,
-            out_channels=c_out,
+        self.fpe = nn.Conv2d(
+            in_channels=in_channels * 2,
+            out_channels=in_channels * 2,
             kernel_size=3,
             padding=1,
-            stride=s,
-            bias=bias,
+            groups=in_channels * 2,
+            bias=True,
         )
-        nn.init.trunc_normal_(self.sk.weight, std=0.02)
-        if self.training is False:
-            self.eval_conv.weight.requires_grad = False
-            self.eval_conv.bias.requires_grad = False
-            self.update_params()
+        self.pad = False
 
-    def update_params(self) -> None:
-        w1 = self.conv[0].weight.data.clone().detach()
-        w2 = self.conv[1].weight.data.clone().detach()
-        w3 = self.conv[2].weight.data.clone().detach()
-        w = F.conv2d(w1.flip(2, 3).permute(1, 0, 2, 3), w2, padding=2, stride=1).flip(2, 3).permute(1, 0, 2, 3)
-
-        self.weight_concat = F.conv2d(w.flip(2, 3).permute(1, 0, 2, 3), w3, padding=0, stride=1).flip(2, 3).permute(1, 0, 2, 3)
-
-        sk_w = self.sk.weight.data.clone().detach()
-
-        if self.bias:
-            b1 = self.conv[0].bias.data.clone().detach()
-            b2 = self.conv[1].bias.data.clone().detach()
-            b3 = self.conv[2].bias.data.clone().detach()
-            b = (w2 * b1.reshape(1, -1, 1, 1)).sum((1, 2, 3)) + b2
-            self.bias_concat = (w3 * b.reshape(1, -1, 1, 1)).sum((1, 2, 3)) + b3
-            sk_b = self.sk.bias.data.clone().detach()
-
-        target_kernel_size = 3
-
-        H_pixels_to_pad = (target_kernel_size - 1) // 2
-        W_pixels_to_pad = (target_kernel_size - 1) // 2
-        sk_w = F.pad(sk_w, [H_pixels_to_pad, H_pixels_to_pad, W_pixels_to_pad, W_pixels_to_pad])
-        self.weight_concat = self.weight_concat + sk_w
-        self.eval_conv.weight.data = self.weight_concat
-        if self.bias:
-            self.bias_concat = self.bias_concat + sk_b
-            self.eval_conv.bias.data = self.bias_concat
-
-    def train(self, mode: bool = True):
-        super().train(mode)
-        if not mode:
-            self.update_params()
-        return self
+    def train(self: T, mode: bool = True) -> T:
+        self.pad = not mode
+        return super().train(mode)
 
     def forward(self, x):
-        if self.training:
-            pad = 1
-            x_pad = F.pad(x, (pad, pad, pad, pad), 'constant', 0)
-            out = self.conv(x_pad) + self.sk(x)
-        else:
-            out = self.eval_conv(x)
-        return out
+        # сохраняем исходный dtype, чтобы вернуть
+        x, pad = pad_to_even(x, self.pad)
 
+        orig_dtype = x.dtype
+        x = x.to(torch.float32)
 
-class SPAB(nn.Module):
-    def __init__(self, in_channels, mid_dim=None, out_dim=None, bias=False, end=False) -> None:
-        super().__init__()
-        mid_dim = mid_dim if mid_dim else in_channels
-        out_dim = out_dim if out_dim else in_channels
-        self.in_channels = in_channels
-        self.c1_r = Conv3XC(in_channels, mid_dim, gain1=2, s=1, bias=bias)
-        self.c2_r = Conv3XC(mid_dim, mid_dim, gain1=2, s=1, bias=bias)
-        self.c3_r = Conv3XC(mid_dim, out_dim, gain1=2, s=1, bias=bias)
-        self.act1 = torch.nn.SiLU(inplace=True)
-        self.end = end
+        b, c, h, w = x.shape
+        ffted = torch.fft.rfft2(x, norm='ortho')  # complex64
+        real = torch.unsqueeze(torch.real(ffted), -1)  # float32
+        imag = torch.unsqueeze(torch.imag(ffted), -1)  # float32
+        ffted = rearrange(torch.cat((real, imag), -1), 'b c h w d -> b (c d) h w').to(orig_dtype)
 
-    def forward(self, x):
-        out1 = self.c1_r(x)
-        out1_act = self.act1(out1)
-        out2 = self.c2_r(out1_act)
-        out2_act = self.act1(out2)
-        out3 = self.c3_r(out2_act)
-        sim_att = torch.sigmoid(out3) - 0.5
-        out = (out3 + x) * sim_att
-        if self.end:
-            return out, out1
-        return out
+        ffted = self.ln(ffted)  # float32
+        ffted = self.fpe(ffted) + ffted  # float32
 
+        dy_weight = self.weight(ffted)  # float32
+        ffted = self.fdc(ffted).view(b, self.groups, 2 * c, h, -1)  # float32
+        ffted = torch.einsum('ijkml,ijml->ikml', ffted, dy_weight)  # float32
+        ffted = F.gelu(ffted)  # float32
 
-class RMSNorm(nn.Module):
-    def __init__(self, dim: int, eps: float = 1e-6) -> None:
-        super().__init__()
-        self.eps = eps
-        self.scale = nn.Parameter(torch.ones(dim))
-        self.offset = nn.Parameter(torch.zeros(dim))
+        ffted = rearrange(ffted, 'b (c d) h w -> b c h w d', d=2).to(torch.float32)
+        ffted = torch.view_as_complex(ffted.contiguous())  # complex64
+        output = torch.fft.irfft2(ffted, s=(h, w), norm='ortho')  # float32
 
-    def forward(self, x):
-        norm_x = x.norm(2, dim=1, keepdim=True)
-        d_x = x.size(1)
-        rms_x = norm_x * (d_x ** (-1.0 / 2))
-        x_normed = x / (rms_x + self.eps)
-        return self.scale[..., None, None] * x_normed + self.offset[..., None, None]
+        return unpad(output.to(orig_dtype), pad)
 
 
 class InceptionDWConv2d(nn.Module):
     """Inception depthweise convolution"""
 
-    def __init__(self, in_channels, square_kernel_size=3, band_kernel_size=11, branch_ratio=0.125) -> None:
+    def __init__(
+        self,
+        in_channels,
+        square_kernel_size=3,
+        band_kernel_size=11,
+        branch_ratio=0.125,
+        shift=0,
+        fft_mode=True,
+    ) -> None:
         super().__init__()
 
         gc = int(in_channels * branch_ratio)  # channel numbers of a convolution branch
-        self.dwconv_hw = nn.Conv2d(gc, gc, square_kernel_size, padding=square_kernel_size // 2, groups=gc)
-        self.dwconv_w = nn.Conv2d(
-            gc,
-            gc,
-            kernel_size=(1, band_kernel_size),
-            padding=(0, band_kernel_size // 2),
-            groups=gc,
+        convs = [
+            nn.Identity(),
+            nn.Conv2d(gc, gc, square_kernel_size, padding=square_kernel_size // 2, groups=gc),
+            nn.Conv2d(
+                gc,
+                gc,
+                kernel_size=(1, band_kernel_size),
+                padding=(0, band_kernel_size // 2),
+                groups=gc,
+            ),
+            nn.Conv2d(
+                gc,
+                gc,
+                kernel_size=(band_kernel_size, 1),
+                padding=(band_kernel_size // 2, 0),
+                groups=gc,
+            ),
+            FourierUnit(gc, gc) if fft_mode else nn.Identity(),
+        ]
+        self.pconv = convs[shift % 5]
+        self.dwconv_hw = convs[(shift + 1) % 5]
+        self.dwconv_w = convs[(shift + 2) % 5]
+        self.dwconv_h = convs[(shift + 3) % 5]
+        self.fsas = convs[(shift + 4) % 5]
+        indexs = [in_channels - 4 * gc, gc, gc, gc, gc]
+        self.split_indexes = (
+            indexs[shift % 5],
+            indexs[(shift + 1) % 5],
+            indexs[(shift + 2) % 5],
+            indexs[(shift + 3) % 5],
+            indexs[(shift + 4) % 5],
         )
-        self.dwconv_h = nn.Conv2d(
-            gc,
-            gc,
-            kernel_size=(band_kernel_size, 1),
-            padding=(band_kernel_size // 2, 0),
-            groups=gc,
-        )
-        self.split_indexes = (in_channels - 3 * gc, gc, gc, gc)
 
     def forward(self, x):
-        x_id, x_hw, x_w, x_h = torch.split(x, self.split_indexes, dim=1)
+        x_id, x_hw, x_w, x_h, fsas = torch.split(x, self.split_indexes, dim=1)
         return torch.cat(
-            (x_id, self.dwconv_hw(x_hw), self.dwconv_w(x_w), self.dwconv_h(x_h)),
+            (
+                self.pconv(x_id),
+                self.dwconv_hw(x_hw),
+                self.dwconv_w(x_w),
+                self.dwconv_h(x_h),
+                self.fsas(fsas),
+            ),
             dim=1,
         )
-
-
-class Attention(nn.Module):
-    def __init__(self, dim, num_heads) -> None:
-        super().__init__()
-        self.num_heads = num_heads
-        self.head_dim = dim // num_heads
-        assert dim % num_heads == 0, 'dim must be divisible by num_heads'
-        self.temperature = nn.Parameter(torch.ones(num_heads, 1, 1))
-
-        self.qkv = nn.Conv2d(dim, dim * 3, kernel_size=1, bias=False)
-        self.qkv_dwconv = nn.Conv2d(dim * 3, dim * 3, 3, 1, 1, 1, dim * 3)
-        self.project_out = nn.Conv2d(dim, dim, kernel_size=1, bias=False)
-
-    def forward(self, x):
-        b, c, h, w = x.shape
-
-        qkv = self.qkv_dwconv(self.qkv(x))
-        q, k, v = torch.chunk(qkv, 3, dim=1)
-
-        # Преобразуем в (b, num_heads, head_dim, h*w)
-        q = q.view(b, self.num_heads, self.head_dim, h * w)
-        k = k.view(b, self.num_heads, self.head_dim, h * w)
-        v = v.view(b, self.num_heads, self.head_dim, h * w)
-
-        q = F.normalize(q, dim=3)
-        k = F.normalize(k, dim=3)
-
-        attn = torch.matmul(q, k.transpose(2, 3)) * self.temperature  # (b, num_heads, hw, hw)
-        attn = attn.softmax(dim=3)
-
-        out = torch.matmul(attn, v)  # (b, num_heads, head_dim, hw)
-
-        # Обратно в (b, c, h, w)
-        out = out.view(b, c, h, w)
-
-        out = self.project_out(out)
-        return out
 
 
 class GatedCNNBlock(nn.Module):
@@ -593,20 +542,21 @@ class GatedCNNBlock(nn.Module):
     def __init__(
         self,
         dim: int = 64,
-        expansion_ratio: float = 1.5,
-        conv_ratio: float = 1,
-        att=False,
+        expansion_ratio: float = 8 / 3,
+        fft_mode=True,
+        shift: int = 0,
     ) -> None:
         super().__init__()
-        self.norm = RMSNorm(dim)
+        self.norm = LayerNorm(dim)
         hidden = int(expansion_ratio * dim)
-        self.fc1 = nn.Conv2d(dim, hidden * 2, 1, 1)
+        self.fc1 = nn.Conv2d(dim, hidden * 2, 3, 1, 1)
 
         self.act = nn.Mish()
-        conv_channels = int(conv_ratio * dim)
+        conv_channels = dim
         self.split_indices = [hidden, hidden - conv_channels, conv_channels]
-        self.token_mix = Attention(conv_channels, 16) if att else InceptionDWConv2d(dim)
-        self.fc2 = nn.Conv2d(hidden, dim, 1, 1, 0)
+        self.conv = InceptionDWConv2d(conv_channels, shift=shift, fft_mode=fft_mode)
+        self.fc2 = nn.Conv2d(hidden, dim, 3, 1, 1)
+        self.gamma = nn.Parameter(torch.ones([1, dim, 1, 1]), requires_grad=True)
         self.apply(self._init_weights)
 
     @staticmethod
@@ -617,186 +567,63 @@ class GatedCNNBlock(nn.Module):
                 nn.init.constant_(m.bias, 0)
 
     def forward(self, x):
+        shortcut = x
+
         x = self.norm(x)
         g, i, c = torch.split(self.fc1(x), self.split_indices, dim=1)
-        c = self.token_mix(c)
-        x = self.act(g) * torch.cat((i, c), dim=1)
-        x = self.act(self.fc2(x))
-        return x
+        c = self.conv(c)
+        x = self.act(self.fc2(self.act(g) * torch.cat((i, c), dim=1)))
+
+        return x * self.gamma + shortcut
 
 
-class SimpleGate(nn.Module):
-    @staticmethod
-    def forward(x):
-        x1, x2 = x.chunk(2, dim=1)
-        return x1 * x2
+class PadPixelUnshuffle(nn.Module):
+    r"""PadPixelUnshuffle."""
 
-
-class MetaGated(nn.Module):
-    def __init__(self, dim) -> None:
+    def __init__(self, down: int) -> None:
         super().__init__()
-        hidden = dim * 2
-        self.local = nn.Sequential(
-            RMSNorm(dim),
-            nn.Conv2d(dim, hidden, 1),
-            nn.Conv2d(hidden, hidden, 3, 1, 1, groups=dim),
-            SimpleGate(),
-        )
-        self.sca = nn.Sequential(
-            nn.AdaptiveAvgPool2d(1),
-            nn.Conv2d(in_channels=dim, out_channels=dim, kernel_size=1),
-        )
-        self.glob = GatedCNNBlock(dim)
-        self.gamma0 = nn.Parameter(torch.ones([1, dim, 1, 1]), requires_grad=True)
-        self.gamma1 = nn.Parameter(torch.ones([1, dim, 1, 1]), requires_grad=True)
-        self.apply(self._init_weights)
-
-    @staticmethod
-    def _init_weights(m) -> None:
-        if isinstance(m, nn.Conv2d | nn.Linear):
-            nn.init.trunc_normal_(m.weight, std=0.02)
-            if m.bias is not None:
-                nn.init.constant_(m.bias, 0)
+        self.ps = down
 
     def forward(self, x):
-        short = x
-        x = self.local(x)
-        x = x * self.sca(x)
-        x = x * self.gamma0 + short
-        del short
-        x = self.glob(x) * self.gamma1 + x
-        return x
+        b, c, h, w = x.shape
+        mod_pad_h = (self.ps - h % self.ps) % self.ps
+        mod_pad_w = (self.ps - w % self.ps) % self.ps
+        return F.pixel_unshuffle(F.pad(x, (0, mod_pad_w, 0, mod_pad_h), 'reflect'), self.ps)
 
 
-class Down(nn.Sequential):
-    def __init__(self, dim) -> None:
-        super().__init__(nn.Conv2d(dim, dim // 2, 3, 1, 1, bias=False), nn.PixelUnshuffle(2))
-
-
-class Upsample(nn.Sequential):
-    def __init__(self, dim) -> None:
-        super().__init__(nn.Conv2d(dim, dim * 2, 3, 1, 1, bias=False), nn.PixelShuffle(2))
-
-
-class Block(nn.Module):
-    def __init__(self, dim, num_gated, down=True) -> None:
-        super().__init__()
-
-        if down:
-            self.gated = nn.Sequential(*[MetaGated(dim) for _ in range(num_gated)])
-            self.scale = Down(dim)
-
-        else:
-            self.scale = Upsample(dim)
-            self.gated = nn.Sequential(*[MetaGated(dim // 2) for _ in range(num_gated)])
-            self.shor = nn.Conv2d(int(dim), dim // 2, 1, 1, 0)
-        self.down = down
-
-    def forward(self, x, short=None):
-        if self.down:
-            x = self.gated(x)
-            return self.scale(x), x
-        else:
-            x = torch.cat([self.scale(x), short], dim=1)
-            x = self.shor(x)
-            return self.gated(x)
-
-
-class GateRV3(nn.Module):
+class GFISR(nn.Module):
     def __init__(
         self,
-        in_ch=3,
-        dim=32,
-        enc_blocks=(2, 2, 4, 8),
-        dec_blocks=(2, 2, 2, 2),
-        num_latent=12,
-        scale=1,
-        upsample: SampleMods = 'pixelshuffle',
-        upsample_mid_dim=32,
-        end_gamma_init=1,
-        attention=False,
-        span_blocks=4,
-        end_kernel=3,
+        in_nc=3,
+        dim=48,
+        expansion_ratio=8 / 3,
+        fft_mode=True,
+        scale=4,
+        out_nc=3,
+        upsampler: SampleMods = 'pixelshuffledirect',
+        mid_dim=32,
+        pixel_unshuffle=True,
+        n_blocks=24,
         **kwargs,
     ) -> None:
         super().__init__()
-
         self.scale = scale
-        self.in_to_dim = nn.Conv2d(in_ch, dim, 3, 1, 1)
-        self.gater_encode = nn.ModuleList([Block(dim * (2**i), enc_blocks[i]) for i in range(len(enc_blocks))])
-        self.span_block0 = SPAB(dim, end=False)
-        self.span_n_b = nn.Sequential(*[SPAB(dim, end=False) for _ in range(span_blocks)])
-        self.span_end = SPAB(dim, end=True)
-        self.sisr_end_conv = Conv3XC(dim, dim, bias=True)
-        self.sisr_cat_conv = nn.Conv2d(dim * 4, dim, 1)
-        nn.init.trunc_normal_(self.sisr_cat_conv.weight, std=0.02)
-        self.latent = nn.Sequential(
-            *[
-                GatedCNNBlock(
-                    dim * (2 ** len(enc_blocks)),
-                    expansion_ratio=1.5,
-                    conv_ratio=1.00,
-                    att=attention,
-                )
-                for _ in range(num_latent)
-            ]
-        )
-        self.decode = nn.ModuleList(
-            [
-                Block(
-                    dim * (2 ** (len(dec_blocks) - i)),
-                    dec_blocks[i],
-                    False,
-                )
-                for i in range(len(dec_blocks))
-            ]
-        )
-        self.pad = 2 ** (len(enc_blocks))
-        # self.dim_to_in = nn.Conv2d(dim*2, in_ch, 3, 1, 1)
-        self.gamma = nn.Parameter(torch.ones(1, in_ch, 1, 1) * end_gamma_init)
-        self.gamma.register_hook(lambda grad: grad * 100)
-        if scale != 1:
-            self.short_to_dim = nn.Upsample(scale_factor=scale)  # ConvBlock(in_ch, dim)
-            self.dim_to_in = UniUpsampleV3(upsample, scale, dim, in_ch, upsample_mid_dim, dysample_end_kernel=end_kernel)
-            # self.upsample =
+        if pixel_unshuffle and scale in [1, 2]:
+            down = 4 // scale
+            self.in_to_dim = nn.Sequential(PadPixelUnshuffle(down), nn.Conv2d(in_nc * down * down, dim, 3, 1, 1))
+            scale = 4
         else:
-            self.dim_to_in = nn.Conv2d(dim, in_ch, 3, 1, 1)
-            self.short_to_dim = nn.Identity()
+            self.in_to_dim = nn.Conv2d(in_nc, dim, 3, 1, 1)
+        self.net = nn.Sequential(*[GatedCNNBlock(dim, shift=i, expansion_ratio=expansion_ratio, fft_mode=fft_mode) for i in range(n_blocks)])
+        self.dim_to_out = UniUpsampleV3(upsampler, scale, dim, out_nc, mid_dim, dysample_end_kernel=3)
 
     def load_state_dict(self, state_dict, *args, **kwargs):
-        if 'dim_to_in.MetaUpsample' in state_dict:
-            state_dict['dim_to_in.MetaUpsample'] = self.dim_to_in.MetaUpsample
-        if 'gamma' not in state_dict:
-            state_dict['gamma'] = self.gamma
+        state_dict['dim_to_out.MetaUpsample'] = self.dim_to_out.MetaUpsample
+        print(state_dict['dim_to_out.MetaUpsample'])
         return super().load_state_dict(state_dict, *args, **kwargs)
 
-    def check_img_size(self, x, resolution: tuple[int, int]):
-        scaled_size = self.pad
-        mod_pad_h = (scaled_size - resolution[0] % scaled_size) % scaled_size
-        mod_pad_w = (scaled_size - resolution[1] % scaled_size) % scaled_size
-        return F.pad(x, (0, mod_pad_w, 0, mod_pad_h), 'reflect')
-
-    def forward(self, inp):
-        B, C, H, W = inp.shape
-        inp = self.check_img_size(inp, (H, W))
-        x = self.in_to_dim(inp)
-        sisr = self.span_block0(x)
-        sisr_short = sisr
-        sisr = self.span_n_b(sisr)
-        sisr, sisr_out = self.span_end(sisr)
-        sisr = self.sisr_end_conv(sisr)
-        sisr = self.sisr_cat_conv(torch.cat([x, sisr, sisr_short, sisr_out], dim=1))
-        del sisr_short, sisr_out
-        shorts = []
-        for block in self.gater_encode:
-            x, short = block(x)
-            shorts.append(short)
-
-        x = self.latent(x)
-        len_block = len(self.decode)
-        shorts.reverse()
-        for index in range(len_block):
-            x = self.decode[index](x, shorts[index])
-
-        x = self.dim_to_in(x + sisr) + self.gamma * self.short_to_dim(inp)
-        return x[:, :, : H * self.scale, : W * self.scale]
+    def forward(self, x):
+        b, c, h, w = x.shape
+        x = self.in_to_dim(x)
+        x = self.net(x) + x
+        return self.dim_to_out(x)[:, :, : h * self.scale, : w * self.scale]
