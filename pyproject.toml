@@ -1,13 +1,13 @@
 [project]
 name = "resselt"
-version = "1.2.0"
+version = "1.2.1"
 description = "Image Super-Resolution PyTorch architectures loader"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "einops>=0.8.0",
     "numpy>=1",
-    "safetensors>=0.5.2",
+    "safetensors<0.6",
     "torch>=2.6.0"
 ]
 
