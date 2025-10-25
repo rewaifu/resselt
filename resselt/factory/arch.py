@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 import torch
 from abc import ABC, abstractmethod
-from typing import Generic, TypeVar, Mapping
+from typing import Generic, TypeVar, Mapping, Sequence
 
 from .key_condition import KeyCondition
 
@@ -15,7 +15,7 @@ class ModelMetadata:
 
     in_channels: int
     out_channels: int
-    upscale: int
+    upscale: int|Sequence[int]
     name: str
 
 
@@ -31,6 +31,6 @@ class Architecture(ABC, Generic[T]):
     def load(self, state_dict: Mapping[str, object]) -> T:
         raise NotImplementedError
 
-    def _enhance_model(self, model: T, in_channels: int, out_channels: int, upscale: int, name) -> T:
+    def _enhance_model(self, model: T, in_channels: int, out_channels: int, upscale: int|Sequence[int], name) -> T:
         model.parameters_info = ModelMetadata(name=name, in_channels=in_channels, out_channels=out_channels, upscale=upscale)
         return model
