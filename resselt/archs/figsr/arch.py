@@ -667,18 +667,43 @@ class FIGSR(nn.Module):
         state_dict['upscale.MetaUpsample'] = self.upscale.MetaUpsample
         return super().load_state_dict(state_dict, strict, assign)
 
+
     def forward(self, x: Tensor) -> Tensor:
         x = (x - self.shift) / self.scale_norm
 
         _, _, H, W = x.shape
-        mod_pad_h = (self.pad - H % self.pad) % self.pad
-        mod_pad_w = (self.pad - W % self.pad) % self.pad
-        x = F.pad(x, (0, mod_pad_w, 0, mod_pad_h), 'reflect')
+        extra = 4
+        H2 = H + 2 * extra
+        W2 = W + 2 * extra
+        mod_pad_h = (self.pad - H2 % self.pad) % self.pad
+        mod_pad_w = (self.pad - W2 % self.pad) % self.pad
+
+        x = F.pad(
+            x,
+            (
+                extra,
+                extra + mod_pad_w,
+                extra,
+                extra + mod_pad_h
+            ),
+            mode='reflect'
+        )
 
         x = self.in_to_dim(x)
         x0 = self.gfisr_body_half(x)
         x1 = self.gfisr_body_half_2(x0)
 
         x = self.cat_to_dim(torch.cat([x1, x, x0], dim=1))
-        x = self.upscale(x)[:, :, : H * self.scale, : W * self.scale]
+        x = self.upscale(x)
+        scale = self.scale
+        crop_extra = extra * scale
+
+        x = x[
+            :,
+            :,
+            crop_extra: crop_extra + H * scale,
+            crop_extra: crop_extra + W * scale,
+        ]
+
         return x * self.scale_norm + self.shift
+
