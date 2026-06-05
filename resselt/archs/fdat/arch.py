@@ -628,9 +628,9 @@ class SimplifiedResidualGroup(nn.Module):
         return self.conv(x_seq.transpose(1, 2).view(B, C, H, W)) + x
 
 
-@store_hyperparameters()
+# @store_hyperparameters()
 class FDAT(nn.Module):
-    hyperparameters = {}
+    # hyperparameters = {}
 
     def __init__(
         self,
