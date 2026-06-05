@@ -11,3 +11,5 @@
 /tests/assets
 /detect/
 /onnx-tensorrt/
+
+**/__pycache__/
